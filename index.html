@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Controle de Pneus – Borracharia</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    body { font-family: Arial, Helvetica, sans-serif; background:#f2f2f2; margin:0; padding:15px; }
+    h1 { text-align:center; }
+    .card { background:#fff; border-radius:10px; padding:15px; margin-bottom:15px; box-shadow:0 2px 5px rgba(0,0,0,.1); }
+    button { padding:10px; border:none; border-radius:6px; cursor:pointer; }
+    .btn { background:#16a34a; color:#fff; }
+    .btn-sec { background:#6b7280; color:#fff; }
+    .btn-danger { background:#dc2626; color:#fff; }
+    input, select, textarea { width:100%; padding:8px; margin-bottom:10px; border-radius:5px; border:1px solid #ccc; }
+    .hidden { display:none; }
+
+    /* Abas estilo imagem */
+    .tabs { display:flex; overflow-x:auto; gap:5px; margin-bottom:10px; }
+    .tab { flex:1; min-width:120px; padding:10px; background:#e5e7eb; text-align:center; border-radius:8px; cursor:pointer; font-weight:bold; }
+    .tab.active { background:#16a34a; color:#fff; }
+
+    .aba { border-left:4px solid #16a34a; padding-left:10px; }
+
+    .foto-box { display:flex; gap:10px; flex-wrap:wrap; }
+    .foto-box img { width:120px; height:120px; object-fit:cover; border-radius:8px; border:1px solid #ccc; }
+  </style>
+</head>
+<body>
+
+<h1>Controle de Pneus</h1>
+
+<div class="card">
+  <label>Mês de Avaliação</label>
+  <input type="month" id="mes">
+  <button class="btn" onclick="criarMes()">Abrir / Criar</button>
+</div>
+
+<div id="lista" class="card hidden">
+  <button class="btn" onclick="novaAvaliacao()">➕ Nova Avaliação</button>
+  <button class="btn-sec" onclick="exportarCSV()">📤 Exportar</button>
+  <div id="avaliacoes"></div>
+</div>
+
+<div id="form" class="card hidden">
+  <h3>Avaliação do Pneu</h3>
+
+  <div class="tabs">
+    <div class="tab active" onclick="abrirAba(0)">Dados</div>
+    <div class="tab" onclick="abrirAba(1)">Motivo</div>
+    <div class="tab" onclick="abrirAba(2)">Informações</div>
+    <div class="tab" onclick="abrirAba(3)">Fotos</div>
+    <div class="tab" onclick="abrirAba(4)">Observação</div>
+  </div>
+
+  <!-- ABA 1 -->
+  <div class="aba">
+    <label>Marca</label><input id="marca">
+    <label>Medida</label><input id="medida">
+    <label>Status</label>
+    <select id="status"><option>Ativo</option><option>Sucateado</option></select>
+  </div>
+
+  <!-- ABA 2 -->
+  <div class="aba hidden">
+    <label>Desenho</label>
+    <select id="desenho"><option>Liso</option><option>Borrachudo</option><option>Misto</option></select>
+    <label>Profundidade</label><input id="profundidade">
+    <label>Vida (%)</label><input type="number" id="vida">
+  </div>
+
+  <!-- ABA 3 -->
+  <div class="aba hidden">
+    <label>Número do Pneu</label><input id="numero">
+    <label>Veículo / Carreta</label><input id="veiculo">
+  </div>
+
+  <!-- ABA 4 FOTOS -->
+  <div class="aba hidden">
+    <input type="file" accept="image/*" multiple onchange="carregarFotos(event)">
+    <div class="foto-box" id="fotos"></div>
+  </div>
+
+  <!-- ABA 5 -->
+  <div class="aba hidden">
+    <textarea id="obs" placeholder="Observações..."></textarea>
+  </div>
+
+  <button class="btn" onclick="salvar()">💾 Salvar</button>
+  <button class="btn-sec" onclick="cancelar()">↩ Voltar</button>
+</div>
+
+<script>
+let mesAtual=null, avaliacoes=[], editando=null, fotosTemp=[];
+
+function criarMes(){ mesAtual=mes.value; if(!mesAtual) return alert('Selecione o mês'); avaliacoes=JSON.parse(localStorage.getItem(mesAtual))||[]; lista.classList.remove('hidden'); render(); }
+
+function render(){ avaliacoes.innerHTML=''; document.getElementById('avaliacoes').innerHTML=''; avaliacoes.forEach((a,i)=>{
+  document.getElementById('avaliacoes').innerHTML+=`<div class='card'><b>${a.marca}</b> - ${a.medida}<br><button class='btn' onclick='editar(${i})'>✏️</button> <button class='btn-sec' onclick='duplicar(${i})'>📄</button> <button class='btn-danger' onclick='excluir(${i})'>🗑️</button></div>`;
+});}
+
+function novaAvaliacao(){ editando=null; fotosTemp=[]; fotos.innerHTML=''; form.classList.remove('hidden'); }
+
+function salvar(){ const dados={ marca:marca.value, medida:medida.value, status:status.value, desenho:desenho.value, profundidade:profundidade.value, vida:vida.value, numero:numero.value, veiculo:veiculo.value, obs:obs.value, fotos:fotosTemp };
+  if(editando!=null) avaliacoes[editando]=dados; else avaliacoes.push(dados);
+  localStorage.setItem(mesAtual,JSON.stringify(avaliacoes)); form.classList.add('hidden'); render(); }
+
+function editar(i){ editando=i; const a=avaliacoes[i]; marca.value=a.marca; medida.value=a.medida; status.value=a.status; desenho.value=a.desenho; profundidade.value=a.profundidade; vida.value=a.vida; numero.value=a.numero; veiculo.value=a.veiculo; obs.value=a.obs; fotosTemp=a.fotos||[]; fotos.innerHTML=''; fotosTemp.forEach(f=>addFoto(f)); form.classList.remove('hidden'); }
+
+function duplicar(i){ avaliacoes.push({...avaliacoes[i]}); salvarLocal(); render(); }
+function excluir(i){ if(confirm('Excluir?')){ avaliacoes.splice(i,1); salvarLocal(); render(); }}
+function salvarLocal(){ localStorage.setItem(mesAtual,JSON.stringify(avaliacoes)); }
+function cancelar(){ form.classList.add('hidden'); }
+
+function abrirAba(i){ document.querySelectorAll('.tab').forEach((t,idx)=>t.classList.toggle('active',idx===i)); document.querySelectorAll('.aba').forEach((a,idx)=>a.classList.toggle('hidden',idx!==i)); }
+
+function carregarFotos(e){ [...e.target.files].forEach(file=>{ const r=new FileReader(); r.onload=()=>{ fotosTemp.push(r.result); addFoto(r.result); }; r.readAsDataURL(file); }); }
+function addFoto(src){ const img=document.createElement('img'); img.src=src; fotos.appendChild(img); }
+
+function exportarCSV(){ let csv='Marca,Medida,Vida,Status\n'; avaliacoes.forEach(a=>csv+=`${a.marca},${a.medida},${a.vida},${a.status}\n`); const b=new Blob([csv],{type:'text/csv'}); const l=document.createElement('a'); l.href=URL.createObjectURL(b); l.download='pneus_'+mesAtual+'.csv'; l.click(); }
+</script>
+
+</body>
+</html>
