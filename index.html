@@ -1,35 +1,139 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8">
-<script src="https://cdn.tailwindcss.com"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Controle de Pneus - Login</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+    .card{
+      background:white;
+      border-radius:20px;
+      box-shadow:0 10px 30px rgba(0,0,0,.08);
+    }
+  </style>
 </head>
 
-<body class="flex items-center justify-center h-screen bg-slate-100">
+<body class="flex items-center justify-center min-h-screen bg-slate-100 p-4">
 
-<div class="bg-white p-8 rounded-xl shadow w-80">
+  <div class="card w-full max-w-sm p-6">
 
-<h1 class="text-2xl font-bold mb-6 text-center">
-Controle de Pneus
-</h1>
+    <div class="logo mb-4 flex justify-center">
+      <img src="suzano-logo.png" class="max-h-16 object-contain">
+    </div>
 
-<input id="nome" placeholder="Usuário"
-class="w-full border p-3 rounded mb-3">
+    <h1 class="text-2xl font-extrabold mb-6 text-center">
+      Controle de Pneus
+    </h1>
 
-<input id="senha" type="password"
-placeholder="Senha"
-class="w-full border p-3 rounded mb-6">
+    <!-- USUÁRIO -->
+    <div class="mb-4">
+      <input
+        id="nome"
+        placeholder="Usuário"
+        autocomplete="username"
+        class="w-full border border-slate-300 px-4 py-4 rounded-xl text-lg focus:ring-2 focus:ring-blue-500 outline-none"
+      >
+    </div>
 
-<button onclick="fazerLogin()"
-  class="w-full bg-blue-600 hover:bg-blue-700 text-white p-3 rounded font-semibold">
-  Entrar
-</button>
+    <!-- SENHA + ÍCONE SVG -->
+<div class="relative mb-6">
+  <input
+    id="senha"
+    type="password"
+    placeholder="Senha"
+    autocomplete="current-password"
+    class="w-full border border-slate-300 px-4 py-4 rounded-xl text-lg focus:ring-2 focus:ring-blue-500 outline-none pr-12"
+  >
 
+  <!-- BOTÃO MOSTRAR SENHA (SVG) -->
+  <button
+    type="button"
+    onclick="toggleSenha()"
+    class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-700"
+    aria-label="Mostrar senha"
+  >
+    <!-- ÍCONE OLHO -->
+    <svg id="iconEyeOpen" xmlns="http://www.w3.org/2000/svg"
+      class="h-6 w-6"
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+      stroke-width="2">
+      <path stroke-linecap="round" stroke-linejoin="round"
+        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+      <path stroke-linecap="round" stroke-linejoin="round"
+        d="M2.458 12C3.732 7.943 7.523 5 12 5
+           c4.477 0 8.268 2.943 9.542 7
+           -1.274 4.057-5.065 7-9.542 7
+           -4.477 0-8.268-2.943-9.542-7z" />
+    </svg>
 
+    <!-- ÍCONE OLHO FECHADO -->
+    <svg id="iconEyeClosed" xmlns="http://www.w3.org/2000/svg"
+      class="h-6 w-6 hidden"
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+      stroke-width="2">
+      <path stroke-linecap="round" stroke-linejoin="round"
+        d="M13.875 18.825A10.05 10.05 0 0112 19
+           c-4.478 0-8.269-2.943-9.543-7
+           a9.97 9.97 0 012.132-3.368" />
+      <path stroke-linecap="round" stroke-linejoin="round"
+        d="M6.18 6.18A9.953 9.953 0 0112 5
+           c4.478 0 8.269 2.943 9.543 7
+           a9.97 9.97 0 01-4.132 5.411" />
+      <path stroke-linecap="round" stroke-linejoin="round"
+        d="M15 12a3 3 0 00-3-3" />
+      <path stroke-linecap="round" stroke-linejoin="round"
+        d="M3 3l18 18" />
+    </svg>
+  </button>
 </div>
 
-<script type="module" src="./js/firebase.js"></script>
-<script type="module" src="./js/auth.js"></script>
+    <!-- BOTÃO LOGIN -->
+    <button
+      onclick="fazerLogin()"
+      class="w-full bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white py-4 rounded-xl text-lg font-bold"
+      style="touch-action: manipulation;"
+    >
+      Entrar
+    </button>
+
+    <footer class="mt-6 text-center text-xs text-slate-400">
+      Criado e Desenvolvido por Cleider Filho
+    </footer>
+  </div>
+
+  <!-- SCRIPTS -->
+  <script type="module" src="./js/firebase.js"></script>
+  <script type="module" src="./js/auth.js"></script>
+
+  <!-- JS LOCAL (UI) -->
+  <script>
+    // 👁️ Mostrar / ocultar senha
+    function toggleSenha(){
+    const input = document.getElementById("senha");
+    const open = document.getElementById("iconEyeOpen");
+    const closed = document.getElementById("iconEyeClosed");
+
+    const isPassword = input.type === "password";
+
+    input.type = isPassword ? "text" : "password";
+    open.classList.toggle("hidden", isPassword);
+    closed.classList.toggle("hidden", !isPassword);
+  }
+
+  // Login com ENTER
+  document.addEventListener("keydown", (e)=>{
+    if(e.key === "Enter"){
+      fazerLogin();
+    }
+  });
+  </script>
 
 </body>
 </html>
