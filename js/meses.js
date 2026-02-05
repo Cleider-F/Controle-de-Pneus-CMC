@@ -15,13 +15,15 @@ import { db } from "./firebase.js";
 const grid = document.getElementById("gridMeses");
 
 const modal = document.getElementById("modalMes");
-const mesPicker = document.getElementById("mesPicker");
+const selMes = document.getElementById("selMes");
+const selAno = document.getElementById("selAno");
 
 const MESES = [
   "Janeiro","Fevereiro","Março","Abril","Maio","Junho",
   "Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"
 ];
 
+/* ======= helpers UI ======= */
 function badgeStatus(status) {
   return status === "finalizado"
     ? `<span class="text-xs px-2 py-1 rounded bg-green-100 text-green-700">Finalizado</span>`
@@ -53,7 +55,7 @@ function cardMesHTML(id, mes) {
       <div class="flex justify-between items-start gap-3">
         <div>
           <h2 class="text-xl font-bold">${mes.nome || "—"}</h2>
-          <div class="mt-2 flex items-center gap-2">
+          <div class="mt-2 flex items-center gap-2 flex-wrap">
             ${badgeStatus(status)}
             <span class="text-sm text-slate-500">• Pneus: ${mes.totalPneus || 0}</span>
           </div>
@@ -66,7 +68,7 @@ function cardMesHTML(id, mes) {
         >🗑️</button>
       </div>
 
-      <div class="flex justify-between items-center">
+      <div class="flex justify-between items-center gap-3">
         <div class="flex items-center gap-2">
           <span class="text-sm text-slate-500">Status</span>
           ${toggleHTML(id, status)}
@@ -83,7 +85,7 @@ function cardMesHTML(id, mes) {
   `;
 }
 
-/* ===== LISTAGEM realtime ===== */
+/* ======= lista realtime ======= */
 if (grid) {
   const q = query(collection(db, "meses"), orderBy("criadoEm", "desc"));
 
@@ -102,12 +104,36 @@ if (grid) {
   );
 }
 
-/* ===== MODAL ===== */
+/* ======= modal ======= */
+function popularAnos() {
+  if (!selAno) return;
+  const agora = new Date();
+  const anoAtual = agora.getFullYear();
+
+  // faixa: anoAtual-2 até anoAtual+5
+  const inicio = anoAtual - 2;
+  const fim = anoAtual + 5;
+
+  selAno.innerHTML = "";
+  for (let a = inicio; a <= fim; a++) {
+    const opt = document.createElement("option");
+    opt.value = String(a);
+    opt.textContent = String(a);
+    if (a === anoAtual) opt.selected = true;
+    selAno.appendChild(opt);
+  }
+}
+
 window.abrirModalMes = function () {
-  if (!modal || !mesPicker) return alert("Modal não encontrado.");
-  mesPicker.value = ""; // limpa
+  if (!modal) return alert("Modal não encontrado.");
+
+  popularAnos();
+
+  // seleciona mês atual
+  const m = new Date().getMonth() + 1;
+  if (selMes) selMes.value = String(m);
+
   modal.classList.remove("hidden");
-  mesPicker.focus();
 };
 
 window.fecharModalMes = function () {
@@ -116,19 +142,11 @@ window.fecharModalMes = function () {
 };
 
 window.confirmarCriarMes = async function () {
-  const valor = (mesPicker?.value || "").trim(); // "2026-02"
-  if (!valor) return alert("Selecione (ou digite) mês/ano.");
+  const mesNumero = Number(selMes?.value);
+  const ano = Number(selAno?.value);
 
-  // valida formato básico
-  const ok = /^\d{4}-\d{2}$/.test(valor);
-  if (!ok) return alert("Formato inválido. Use: 2026-02");
-
-  const [anoStr, mesStr] = valor.split("-");
-  const ano = Number(anoStr);
-  const mesNumero = Number(mesStr);
-
-  if (!ano || mesNumero < 1 || mesNumero > 12) {
-    return alert("Mês/ano inválido.");
+  if (!mesNumero || mesNumero < 1 || mesNumero > 12 || !ano) {
+    return alert("Selecione mês e ano.");
   }
 
   const nome = `${MESES[mesNumero - 1]} / ${ano}`;
@@ -150,7 +168,7 @@ window.confirmarCriarMes = async function () {
   }
 };
 
-/* ===== TOGGLE STATUS ===== */
+/* ======= ações ======= */
 window.toggleStatusMes = async function (mesId, statusAtual) {
   try {
     const novo = statusAtual === "finalizado" ? "em_andamento" : "finalizado";
@@ -164,9 +182,8 @@ window.toggleStatusMes = async function (mesId, statusAtual) {
   }
 };
 
-/* ===== EXCLUIR MÊS ===== */
 window.excluirMes = async function (mesId) {
-  if (!confirm("Excluir este mês? (o documento do mês será removido)")) return;
+  if (!confirm("Excluir este mês? (Atenção: pneus dentro do mês NÃO são removidos automaticamente)")) return;
 
   try {
     await deleteDoc(doc(db, "meses", mesId));
@@ -176,7 +193,6 @@ window.excluirMes = async function (mesId) {
   }
 };
 
-/* ===== ABRIR ===== */
 window.abrirMes = function (id) {
   localStorage.setItem("mesAtual", id);
   window.location.href = "./mes.html";
