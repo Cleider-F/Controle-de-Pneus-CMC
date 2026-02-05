@@ -201,6 +201,19 @@
 
   </main>
 
+<!-- MODAL VISUALIZAR IMAGEM -->
+<div id="modalImagem"
+  class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-50">
+
+  <button onclick="fecharImagem()"
+    class="absolute top-4 right-4 text-white text-3xl font-bold">
+    ✕
+  </button>
+
+  <img id="imagemExpandida"
+    class="max-w-full max-h-full rounded-xl shadow-lg" />
+</div>
+
   <script type="module" src="./js/firebase.js"></script>
   <script type="module" src="./js/pneuForm.js"></script>
 </body>

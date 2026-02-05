@@ -12,18 +12,11 @@ import {
 
 import { db } from "./firebase.js";
 
-const grid = document.getElementById("gridMeses");
-
-const modal = document.getElementById("modalMes");
-const selMes = document.getElementById("selMes");
-const selAno = document.getElementById("selAno");
-
 const MESES = [
   "Janeiro","Fevereiro","Março","Abril","Maio","Junho",
   "Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"
 ];
 
-/* ======= helpers UI ======= */
 function badgeStatus(status) {
   return status === "finalizado"
     ? `<span class="text-xs px-2 py-1 rounded bg-green-100 text-green-700">Finalizado</span>`
@@ -85,10 +78,18 @@ function cardMesHTML(id, mes) {
   `;
 }
 
-/* ======= lista realtime ======= */
-if (grid) {
-  const q = query(collection(db, "meses"), orderBy("criadoEm", "desc"));
+/* ========= INIT (só depois do DOM pronto) ========= */
+document.addEventListener("DOMContentLoaded", () => {
+  const grid = document.getElementById("gridMeses");
 
+  // Se não for a página app.html, não executa nada (evita erro no mobile abrindo outra página)
+  if (!grid) {
+    console.warn("gridMeses não encontrado — meses.js não será executado nesta página.");
+    return;
+  }
+
+  // Listagem realtime
+  const q = query(collection(db, "meses"), orderBy("criadoEm", "desc"));
   onSnapshot(
     q,
     (snap) => {
@@ -102,73 +103,76 @@ if (grid) {
       alert("Erro ao carregar meses. Veja o console (F12).");
     }
   );
-}
 
-/* ======= modal ======= */
-function popularAnos() {
-  if (!selAno) return;
-  const agora = new Date();
-  const anoAtual = agora.getFullYear();
+  // Modal + selects: pega aqui, depois do DOM existir
+  const modal = document.getElementById("modalMes");
+  const selMes = document.getElementById("selMes");
+  const selAno = document.getElementById("selAno");
 
-  // faixa: anoAtual-2 até anoAtual+5
-  const inicio = anoAtual - 2;
-  const fim = anoAtual + 5;
+  function popularAnos() {
+    const agora = new Date();
+    const anoAtual = agora.getFullYear();
+    const inicio = anoAtual - 2;
+    const fim = anoAtual + 5;
 
-  selAno.innerHTML = "";
-  for (let a = inicio; a <= fim; a++) {
-    const opt = document.createElement("option");
-    opt.value = String(a);
-    opt.textContent = String(a);
-    if (a === anoAtual) opt.selected = true;
-    selAno.appendChild(opt);
-  }
-}
-
-window.abrirModalMes = function () {
-  if (!modal) return alert("Modal não encontrado.");
-
-  popularAnos();
-
-  // seleciona mês atual
-  const m = new Date().getMonth() + 1;
-  if (selMes) selMes.value = String(m);
-
-  modal.classList.remove("hidden");
-};
-
-window.fecharModalMes = function () {
-  if (!modal) return;
-  modal.classList.add("hidden");
-};
-
-window.confirmarCriarMes = async function () {
-  const mesNumero = Number(selMes?.value);
-  const ano = Number(selAno?.value);
-
-  if (!mesNumero || mesNumero < 1 || mesNumero > 12 || !ano) {
-    return alert("Selecione mês e ano.");
+    selAno.innerHTML = "";
+    for (let a = inicio; a <= fim; a++) {
+      const opt = document.createElement("option");
+      opt.value = String(a);
+      opt.textContent = String(a);
+      if (a === anoAtual) opt.selected = true;
+      selAno.appendChild(opt);
+    }
   }
 
-  const nome = `${MESES[mesNumero - 1]} / ${ano}`;
+  window.abrirModalMes = function () {
+    if (!modal || !selMes || !selAno) {
+      alert("Modal não encontrado nesta página. Abra o app.html.");
+      console.error("modalMes/selMes/selAno não encontrados", { modal, selMes, selAno });
+      return;
+    }
 
-  try {
-    await addDoc(collection(db, "meses"), {
-      nome,
-      ano,
-      mes: mesNumero,
-      criadoEm: serverTimestamp(),
-      totalPneus: 0,
-      status: "em_andamento"
-    });
+    popularAnos();
+    selMes.value = String(new Date().getMonth() + 1);
+    modal.classList.remove("hidden");
+  };
 
-    window.fecharModalMes();
-  } catch (err) {
-    console.error("ERRO ao criar mês:", err);
-    alert("Não foi possível criar o mês. Veja o console (F12).");
-  }
-};
+  window.fecharModalMes = function () {
+    if (!modal) return;
+    modal.classList.add("hidden");
+  };
 
-/* ======= ações ======= */
+  window.confirmarCriarMes = async function () {
+    if (!selMes || !selAno) return;
+
+    const mesNumero = Number(selMes.value);
+    const ano = Number(selAno.value);
+
+    if (!mesNumero || mesNumero < 1 || mesNumero > 12 || !ano) {
+      return alert("Selecione mês e ano.");
+    }
+
+    const nome = `${MESES[mesNumero - 1]} / ${ano}`;
+
+    try {
+      await addDoc(collection(db, "meses"), {
+        nome,
+        ano,
+        mes: mesNumero,
+        criadoEm: serverTimestamp(),
+        totalPneus: 0,
+        status: "em_andamento"
+      });
+
+      window.fecharModalMes();
+    } catch (err) {
+      console.error("ERRO ao criar mês:", err);
+      alert("Não foi possível criar o mês. Veja o console (F12).");
+    }
+  };
+});
+
+/* ========= ações globais ========= */
 window.toggleStatusMes = async function (mesId, statusAtual) {
   try {
     const novo = statusAtual === "finalizado" ? "em_andamento" : "finalizado";
@@ -183,7 +187,7 @@ window.toggleStatusMes = async function (mesId, statusAtual) {
 };
 
 window.excluirMes = async function (mesId) {
-  if (!confirm("Excluir este mês? (Atenção: pneus dentro do mês NÃO são removidos automaticamente)")) return;
+  if (!confirm("Excluir este mês? (Pneus dentro do mês não são removidos automaticamente)")) return;
 
   try {
     await deleteDoc(doc(db, "meses", mesId));

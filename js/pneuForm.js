@@ -34,16 +34,11 @@ function pneuDocRef(mesId, pneuId) {
 }
 
 function setReadOnly(isReadOnly) {
-  const inputs = document.querySelectorAll("input, textarea, select, button");
+  // trava inputs/textarea/select/file, mas não trava botões de navegação
+  const inputs = document.querySelectorAll("input, textarea, select");
   inputs.forEach((el) => {
-    // não bloqueia botão voltar
-    if (el.getAttribute("onclick")?.includes("voltarMes")) return;
-
-    // file input também deve travar
-    if (el.id === "f_fotos" || el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.tagName === "SELECT") {
-      el.disabled = isReadOnly;
-      el.classList.toggle("bg-slate-100", isReadOnly);
-    }
+    el.disabled = isReadOnly;
+    el.classList.toggle("bg-slate-100", isReadOnly);
   });
 
   // esconde botões salvar/finalizar em modo leitura
@@ -59,40 +54,82 @@ function setHeader({ numero, status, mesNome }) {
 }
 
 /* =========================
+   Modal imagem (preview)
+   Requer no pneu.html:
+   - div#modalImagem
+   - img#imagemExpandida
+========================= */
+window.abrirImagem = function (src) {
+  const modal = $("modalImagem");
+  const img = $("imagemExpandida");
+  if (!modal || !img) {
+    console.warn("Modal de imagem não encontrado no HTML (modalImagem/imagemExpandida).");
+    return;
+  }
+
+  img.src = src;
+  modal.classList.remove("hidden");
+};
+
+window.fecharImagem = function () {
+  const modal = $("modalImagem");
+  const img = $("imagemExpandida");
+  if (!modal || !img) return;
+
+  img.src = "";
+  modal.classList.add("hidden");
+};
+
+// Fecha clicando fora da imagem
+document.addEventListener("DOMContentLoaded", () => {
+  const modal = $("modalImagem");
+  if (modal) {
+    modal.addEventListener("click", (e) => {
+      if (e.target && e.target.id === "modalImagem") {
+        window.fecharImagem();
+      }
+    });
+  }
+});
+
+/* =========================
    Estado local
 ========================= */
 let modoLeitura = false;
-let fotosSelecionadas = []; // File[]
-let urlsFotosExistentes = []; // string[]
+let fotosSelecionadas = [];     // File[]
+let urlsFotosExistentes = [];   // string[] (download URLs)
 
 /* =========================
-   Preview de fotos
+   Preview de fotos (com clique)
 ========================= */
+function criarThumb(src) {
+  const wrap = document.createElement("div");
+  wrap.className = "bg-slate-50 border rounded-xl overflow-hidden";
+
+  const img = document.createElement("img");
+  img.src = src;
+  img.className = "w-full h-28 object-cover cursor-pointer hover:opacity-80";
+  img.addEventListener("click", () => window.abrirImagem(src));
+
+  wrap.appendChild(img);
+  return wrap;
+}
+
 function renderPreviewFotos() {
   const box = $("previewFotos");
   if (!box) return;
 
   box.innerHTML = "";
 
-  // 1) fotos já salvas no firestore
+  // 1) fotos já salvas no firestore (URL)
   urlsFotosExistentes.forEach((url) => {
-    const wrap = document.createElement("div");
-    wrap.className = "bg-slate-50 border rounded-xl overflow-hidden";
-    wrap.innerHTML = `
-      <img src="${url}" class="w-full h-28 object-cover" />
-    `;
-    box.appendChild(wrap);
+    box.appendChild(criarThumb(url));
   });
 
-  // 2) novas fotos selecionadas (local)
+  // 2) novas fotos selecionadas (local File)
   fotosSelecionadas.forEach((file) => {
-    const url = URL.createObjectURL(file);
-    const wrap = document.createElement("div");
-    wrap.className = "bg-slate-50 border rounded-xl overflow-hidden";
-    wrap.innerHTML = `
-      <img src="${url}" class="w-full h-28 object-cover" />
-    `;
-    box.appendChild(wrap);
+    const urlLocal = URL.createObjectURL(file);
+    box.appendChild(criarThumb(urlLocal));
   });
 }
 
@@ -120,7 +157,6 @@ function bindFotosInput() {
 async function uploadFotos(mesId, pneuId) {
   if (!fotosSelecionadas.length) return [];
 
-  // limita 4
   const files = fotosSelecionadas.slice(0, 4);
 
   const uploads = files.map(async (file, idx) => {
@@ -163,12 +199,12 @@ async function carregarPneu() {
 
   const mesNome = await carregarMesNome(mesId);
 
-  const ref = pneuDocRef(mesId, pneuId);
-  const snap = await getDoc(ref);
+  const refDoc = pneuDocRef(mesId, pneuId);
+  const snap = await getDoc(refDoc);
 
   if (!snap.exists()) {
-    // Pneu ainda não existe? cria doc mínimo (não trava)
-    await setDoc(ref, {
+    // cria doc mínimo se ainda não existir
+    await setDoc(refDoc, {
       status: "em_andamento",
       criadoEm: serverTimestamp(),
       atualizadoEm: serverTimestamp()
@@ -194,33 +230,33 @@ async function carregarPneu() {
   setReadOnly(modoLeitura);
 
   // planejamento
-  $("f_como").value = p.planejamento?.como || "";
-  $("f_instrucoes").value = p.planejamento?.instrucoes || "";
+  if ($("f_como")) $("f_como").value = p.planejamento?.como || "";
+  if ($("f_instrucoes")) $("f_instrucoes").value = p.planejamento?.instrucoes || "";
 
   // quando
-  $("f_inicio").value = p.quando?.inicio || "";
-  $("f_fim").value = p.quando?.fim || "";
+  if ($("f_inicio")) $("f_inicio").value = p.quando?.inicio || "";
+  if ($("f_fim")) $("f_fim").value = p.quando?.fim || "";
 
   // onde
-  $("f_nome").value = p.onde?.nome || "";
-  $("f_razao").value = p.onde?.razao || "";
-  $("f_endereco").value = p.onde?.endereco || "";
+  if ($("f_nome")) $("f_nome").value = p.onde?.nome || "";
+  if ($("f_razao")) $("f_razao").value = p.onde?.razao || "";
+  if ($("f_endereco")) $("f_endereco").value = p.onde?.endereco || "";
 
-  // caracteristicas
-  $("c_marca").value = p.caracteristicas?.marca || "";
-  $("c_medida").value = p.caracteristicas?.medida || "";
-  $("c_desenho").value = p.caracteristicas?.desenho || "";
-  $("c_profundidade").value = p.caracteristicas?.profundidade || "";
-  $("c_vida").value = p.caracteristicas?.vida || "";
+  // caracteristicas (se existir no HTML)
+  if ($("c_marca")) $("c_marca").value = p.caracteristicas?.marca || "";
+  if ($("c_medida")) $("c_medida").value = p.caracteristicas?.medida || "";
+  if ($("c_desenho")) $("c_desenho").value = p.caracteristicas?.desenho || "";
+  if ($("c_profundidade")) $("c_profundidade").value = p.caracteristicas?.profundidade || "";
+  if ($("c_vida")) $("c_vida").value = p.caracteristicas?.vida || "";
 
-  // informações
-  $("i_dot").value = p.info?.dot || "";
-  $("i_fogo").value = p.info?.fogo || "";
-  $("i_cliente").value = p.info?.cliente || "";
-  $("i_data").value = p.info?.data || "";
-  $("i_mesRef").value = p.info?.mesReferencia || "";
-  $("i_avaria").value = p.info?.avaria || "";
-  $("i_causa").value = p.info?.causa || "";
+  // informações (se existir no HTML)
+  if ($("i_dot")) $("i_dot").value = p.info?.dot || "";
+  if ($("i_fogo")) $("i_fogo").value = p.info?.fogo || "";
+  if ($("i_cliente")) $("i_cliente").value = p.info?.cliente || "";
+  if ($("i_data")) $("i_data").value = p.info?.data || "";
+  if ($("i_mesRef")) $("i_mesRef").value = p.info?.mesReferencia || "";
+  if ($("i_avaria")) $("i_avaria").value = p.info?.avaria || "";
+  if ($("i_causa")) $("i_causa").value = p.info?.causa || "";
 
   // fotos
   urlsFotosExistentes = Array.isArray(p.fotos) ? p.fotos : [];
@@ -247,51 +283,50 @@ window.salvarFormulario = async function () {
   try {
     const refDoc = pneuDocRef(mesId, pneuId);
 
-    // upload de fotos novas (se houver)
+    // upload de fotos novas
     const novasUrls = await uploadFotos(mesId, pneuId);
 
     const dados = {
       planejamento: {
-        como: $("f_como").value.trim(),
-        instrucoes: $("f_instrucoes").value.trim()
+        como: ($("f_como")?.value || "").trim(),
+        instrucoes: ($("f_instrucoes")?.value || "").trim()
       },
       quando: {
-        inicio: $("f_inicio").value || "",
-        fim: $("f_fim").value || ""
+        inicio: $("f_inicio")?.value || "",
+        fim: $("f_fim")?.value || ""
       },
       onde: {
-        nome: $("f_nome").value.trim(),
-        razao: $("f_razao").value.trim(),
-        endereco: $("f_endereco").value.trim()
+        nome: ($("f_nome")?.value || "").trim(),
+        razao: ($("f_razao")?.value || "").trim(),
+        endereco: ($("f_endereco")?.value || "").trim()
       },
       caracteristicas: {
-        marca: $("c_marca").value || "",
-        medida: $("c_medida").value || "",
-        desenho: $("c_desenho").value || "",
-        profundidade: $("c_profundidade").value || "",
-        vida: $("c_vida").value || ""
+        marca: $("c_marca")?.value || "",
+        medida: $("c_medida")?.value || "",
+        desenho: $("c_desenho")?.value || "",
+        profundidade: $("c_profundidade")?.value || "",
+        vida: $("c_vida")?.value || ""
       },
       info: {
-        dot: $("i_dot").value.trim(),
-        fogo: $("i_fogo").value.trim(),
-        cliente: $("i_cliente").value.trim(),
-        data: $("i_data").value || "",
-        mesReferencia: $("i_mesRef").value || "",
-        avaria: $("i_avaria").value || "",
-        causa: $("i_causa").value || ""
+        dot: ($("i_dot")?.value || "").trim(),
+        fogo: ($("i_fogo")?.value || "").trim(),
+        cliente: ($("i_cliente")?.value || "").trim(),
+        data: $("i_data")?.value || "",
+        mesReferencia: $("i_mesRef")?.value || "",
+        avaria: $("i_avaria")?.value || "",
+        causa: $("i_causa")?.value || ""
       },
-      // mantém status atual se já estiver setado
       atualizadoEm: serverTimestamp()
     };
 
-    // se tinha fotos antigas e adicionou novas, concatena
+    // concatena fotos antigas + novas (limite 4)
     if (novasUrls.length) {
       dados.fotos = [...urlsFotosExistentes, ...novasUrls].slice(0, 4);
     }
 
     await updateDoc(refDoc, dados);
 
-    // atualiza estado e preview (limpa seleção)
+    // atualiza estado/preview
     if (novasUrls.length) {
       urlsFotosExistentes = (dados.fotos || urlsFotosExistentes);
       fotosSelecionadas = [];
@@ -301,8 +336,6 @@ window.salvarFormulario = async function () {
     }
 
     alert("Salvo com sucesso!");
-
-    // recarrega header/status
     await carregarPneu();
 
   } catch (e) {
@@ -312,7 +345,7 @@ window.salvarFormulario = async function () {
 };
 
 /* =========================
-   Finalizar pneu (trava)
+   Finalizar pneu
 ========================= */
 window.finalizarPneu = async function () {
   if (modoLeitura) return;
@@ -331,7 +364,7 @@ window.finalizarPneu = async function () {
   try {
     const refDoc = pneuDocRef(mesId, pneuId);
 
-    // garante salvar antes de finalizar
+    // salva antes de finalizar
     await window.salvarFormulario();
 
     await updateDoc(refDoc, {
@@ -356,7 +389,6 @@ window.finalizarPneu = async function () {
    Navegação
 ========================= */
 window.voltarMes = function () {
-  // você pode trocar pra mes.html ou mês.html conforme seu arquivo
   window.location.href = "./mes.html";
 };
 

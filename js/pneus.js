@@ -23,6 +23,32 @@ const mesTitulo = document.getElementById("mesTitulo");
 const btnNovoPneu = document.getElementById("btnNovoPneu");
 const btnFinalizarMes = document.getElementById("btnFinalizarMes");
 
+function agoraBR() {
+  const d = new Date();
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function limparCSV(v) {
+  if (v === null || v === undefined) return "";
+  // remove quebras e evita quebrar CSV
+  return String(v).replace(/\r?\n/g, " ").replace(/;/g, ",").trim();
+}
+
+function baixarArquivo(texto, nomeArquivo, mime = "text/csv;charset=utf-8;") {
+  const blob = new Blob([texto], { type: mime });
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = nomeArquivo;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+
+  URL.revokeObjectURL(url);
+}
+
 if (!mesId) {
   alert("Nenhum mês selecionado.");
   window.location.href = "./app.html";
@@ -330,85 +356,111 @@ function escapeCSV(v) {
 
 window.exportarCSV = async function () {
   try {
-    const snap = await getDocs(collection(db, "meses", mesId, "pneus"));
+    const mesId = localStorage.getItem("mesAtual");
+    const usuario = localStorage.getItem("usuario") || "—";
 
-    if (snap.empty) {
-      alert("Não há pneus para exportar.");
+    if (!mesId) {
+      alert("Mês atual não encontrado.");
       return;
     }
 
-    const header = [
-      "numero",
-      "status",
-      "planejamento_como",
-      "planejamento_instrucoes",
-      "quando_inicio",
-      "quando_fim",
-      "onde_nome",
-      "onde_razaoSocial",
-      "onde_endereco",
-      "caracteristicas_marca",
-      "caracteristicas_medida",
-      "caracteristicas_desenho",
-      "caracteristicas_profundidade",
-      "caracteristicas_vida",
-      "info_dot",
-      "info_numeroFogo",
-      "info_cliente",
-      "info_data",
-      "info_mesReferencia",
-      "info_avaria",
-      "info_causa",
-      "fotos_urls"
-    ];
+    // 1) Buscar o mês
+    const mesRef = doc(db, "meses", mesId);
+    const mesSnap = await getDoc(mesRef);
 
-    const linhas = [header.join(";")];
+    if (!mesSnap.exists()) {
+      alert("Mês não encontrado no Firestore.");
+      return;
+    }
 
-    snap.forEach((d) => {
-      const p = d.data();
+    const mes = mesSnap.data();
 
-      const row = [
-        p.numero,
-        p.status,
-        p.planejamento?.como,
-        p.planejamento?.instrucoes,
-        p.quando?.inicio,
-        p.quando?.fim,
-        p.onde?.nome,
-        p.onde?.razaoSocial,
-        p.onde?.endereco,
-        p.caracteristicas?.marca,
-        p.caracteristicas?.medida,
-        p.caracteristicas?.desenho,
-        p.caracteristicas?.profundidade,
-        p.caracteristicas?.vida,
-        p.informacoesPneu?.dot,
-        p.informacoesPneu?.numeroFogo,
-        p.informacoesPneu?.cliente,
-        p.informacoesPneu?.data,
-        p.informacoesPneu?.mesReferencia,
-        p.informacoesPneu?.avaria,
-        p.informacoesPneu?.causa,
-        (p.fotos || []).join(" | ")
-      ].map(escapeCSV);
+    // 2) Buscar pneus do mês (ordenado por número)
+    const pneusRef = collection(db, "meses", mesId, "pneus");
+    const pneusSnap = await getDocs(query(pneusRef, orderBy("numero", "asc")));
+    const pneus = pneusSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
 
-      linhas.push(row.join(";"));
+    // 3) Montar “CSV relatório”
+    const linhas = [];
+
+    linhas.push("RELATORIO DE AVALIACAO DE PNEUS");
+    linhas.push(`Mes;${limparCSV(mes.nome || "—")}`);
+    linhas.push(`Status do Mes;${limparCSV(mes.status || "—")}`);
+    linhas.push(`Total de Pneus;${pneus.length}`);
+    linhas.push(`Gerado em;${agoraBR()}`);
+    linhas.push(`Responsavel;${limparCSV(usuario)}`);
+    linhas.push("");
+
+    linhas.push(";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;");
+    linhas.push("");
+
+    pneus.forEach((p) => {
+      linhas.push(`PNEU Nº;${limparCSV(p.numero || "—")}`);
+      linhas.push(`Status;${limparCSV(p.status || "—")}`);
+      linhas.push("");
+
+      linhas.push("--- PLANEJAMENTO ---");
+      linhas.push(`Como sera realizado;${limparCSV(p.planejamento?.como || "")}`);
+      linhas.push(`Instrucoes;${limparCSV(p.planejamento?.instrucoes || "")}`);
+      linhas.push("");
+
+      linhas.push("--- QUANDO ---");
+      linhas.push(`Inicio;${limparCSV(p.quando?.inicio || "")}`);
+      linhas.push(`Fim;${limparCSV(p.quando?.fim || "")}`);
+      linhas.push("");
+
+      linhas.push("--- ONDE ---");
+      linhas.push(`Nome;${limparCSV(p.onde?.nome || "")}`);
+      linhas.push(`Razao social;${limparCSV(p.onde?.razao || "")}`);
+      linhas.push(`Endereco;${limparCSV(p.onde?.endereco || "")}`);
+      linhas.push("");
+
+      linhas.push("--- CARACTERISTICAS DO PNEU ---");
+      linhas.push(`Marca;${limparCSV(p.caracteristicas?.marca || "")}`);
+      linhas.push(`Medida;${limparCSV(p.caracteristicas?.medida || "")}`);
+      linhas.push(`Desenho;${limparCSV(p.caracteristicas?.desenho || "")}`);
+      linhas.push(`Profundidade;${limparCSV(p.caracteristicas?.profundidade || "")}`);
+      linhas.push(`Vida;${limparCSV(p.caracteristicas?.vida || "")}`);
+      linhas.push("");
+
+      linhas.push("--- INFORMACOES DO PNEU ---");
+      linhas.push(`DOT;${limparCSV(p.info?.dot || "")}`);
+      linhas.push(`Numero de fogo;${limparCSV(p.info?.fogo || "")}`);
+      linhas.push(`Cliente;${limparCSV(p.info?.cliente || "")}`);
+      linhas.push(`Data;${limparCSV(p.info?.data || "")}`);
+      linhas.push(`Mes de referencia;${limparCSV(p.info?.mesReferencia || "")}`);
+      linhas.push(`Avaria;${limparCSV(p.info?.avaria || "")}`);
+      linhas.push(`Causa;${limparCSV(p.info?.causa || "")}`);
+      linhas.push("");
+
+      // Fotos (links)
+      const fotos = Array.isArray(p.fotos) ? p.fotos : [];
+      linhas.push("--- FOTOS (LINKS) ---");
+      if (fotos.length) {
+        fotos.slice(0, 4).forEach((url, idx) => {
+          linhas.push(`Foto ${idx + 1};${limparCSV(url)}`);
+        });
+      } else {
+        linhas.push("Sem fotos;");
+      }
+      linhas.push("");
+
+      linhas.push(";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;");
+      linhas.push("");
     });
 
-    const csv = "\uFEFF" + linhas.join("\n"); // BOM p/ Excel pt-br
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
+    const csv = linhas.join("\n");
 
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `mes_${mesId}_pneus.csv`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
+    // Nome do arquivo
+    const safeMes = (mes.nome || "mes")
+      .replace(/[^\w\- ]+/g, "")
+      .replace(/\s+/g, "_");
+
+    baixarArquivo(csv, `relatorio_${safeMes}.csv`);
+
   } catch (e) {
-    console.error(e);
-    alert("Erro ao exportar CSV.");
+    console.error("Erro ao exportar CSV:", e);
+    alert("Erro ao exportar CSV. Veja o console (F12).");
   }
 };
 
