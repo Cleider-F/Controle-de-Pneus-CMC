@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Pneus do Mês</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-slate-100 min-h-screen">
+  <script type="module" src="./js/authGuard.js"></script>
+
+  <header class="bg-white shadow p-4 flex items-center justify-between">
+    <div>
+      <h1 class="text-xl font-bold">Pneus do Mês</h1>
+      <p id="mesTitulo" class="text-sm text-slate-500">Carregando...</p>
+    </div>
+
+    <div class="flex gap-2 flex-wrap justify-end">
+      <button onclick="voltarMeses()"
+        class="px-4 py-2 rounded bg-slate-200 hover:bg-slate-300">
+        Voltar
+      </button>
+
+      <button id="btnFinalizarMes" onclick="finalizarMes()"
+        class="px-4 py-2 rounded bg-red-600 text-white hover:bg-red-700">
+        Finalizar mês
+      </button>
+
+      <button onclick="exportarCSV()"
+        class="px-4 py-2 rounded bg-slate-800 text-white hover:bg-slate-900">
+        Exportar CSV
+      </button>
+
+      <button id="btnNovoPneu" onclick="criarPneuUI()"
+        class="px-4 py-2 rounded bg-green-600 text-white hover:bg-green-700">
+        + Novo Pneu
+      </button>
+    </div>
+  </header>
+
+  <main class="p-6">
+    <div id="gridPneus" class="grid md:grid-cols-3 gap-6"></div>
+  </main>
+  
+  <script type="module" src="./js/authGuard.js"></script>
+  <script type="module" src="./js/firebase.js"></script>
+  <script type="module" src="./js/pneus.js"></script>
+</body>
+</html>

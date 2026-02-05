@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-slate-100">
+
+<script type="module" src="./js/authGuard.js"></script>
+
+<header class="bg-white p-4 shadow flex justify-between">
+<h1 class="font-bold text-xl">Meses</h1>
+
+<button onclick="logout()"
+class="bg-red-500 text-white px-4 py-2 rounded">
+Sair
+</button>
+</header>
+
+<main class="p-6">
+
+<button onclick="criarMesUI()"
+class="bg-green-600 text-white px-6 py-3 rounded mb-6">
++ Criar Mês
+</button>
+
+<div id="gridMeses"
+class="grid md:grid-cols-3 gap-6"></div>
+
+</main>
+
+<script type="module" src="./js/firebase.js"></script>
+<script type="module" src="./js/auth.js"></script>
+<script type="module" src="./js/meses.js"></script>
+
+</body>
+</html>

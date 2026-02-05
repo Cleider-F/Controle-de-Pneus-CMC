@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Formulário do Pneu</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-slate-100 min-h-screen">
+  <script type="module" src="./js/authGuard.js"></script>
+
+  <header class="bg-white shadow p-4 flex justify-between items-center">
+    <div>
+      <h1 id="tituloPneu" class="text-xl font-bold">Carregando...</h1>
+      <p id="subtituloPneu" class="text-sm text-slate-500">Aguarde</p>
+    </div>
+
+    <div class="flex gap-2 flex-wrap justify-end">
+      <button onclick="voltarMes()"
+        class="px-4 py-2 rounded bg-slate-200 hover:bg-slate-300">
+        Voltar
+      </button>
+
+      <button id="btnFinalizarPneu" onclick="finalizarPneu()"
+        class="px-4 py-2 rounded bg-green-600 hover:bg-green-700 text-white">
+        Finalizar pneu
+      </button>
+
+      <button id="btnSalvar" onclick="salvarFormulario()"
+        class="px-4 py-2 rounded bg-blue-600 hover:bg-blue-700 text-white">
+        Salvar
+      </button>
+    </div>
+  </header>
+
+  <main class="p-6 max-w-5xl mx-auto space-y-6">
+
+    <!-- PLANEJAMENTO -->
+    <div class="bg-white p-6 rounded-2xl shadow">
+      <h2 class="font-bold text-lg mb-2">Planejamento</h2>
+      <textarea id="f_como" class="w-full border p-3 rounded mb-3" placeholder="Como será realizado"></textarea>
+      <textarea id="f_instrucoes" class="w-full border p-3 rounded" placeholder="Instruções"></textarea>
+    </div>
+
+    <!-- QUANDO -->
+    <div class="bg-white p-6 rounded-2xl shadow">
+      <h2 class="font-bold text-lg mb-2">Quando</h2>
+      <div class="grid md:grid-cols-2 gap-3">
+        <div>
+          <label class="text-sm text-slate-600">Data e hora inicial</label>
+          <input id="f_inicio" type="datetime-local" class="border p-3 rounded w-full">
+        </div>
+        <div>
+          <label class="text-sm text-slate-600">Data e hora final</label>
+          <input id="f_fim" type="datetime-local" class="border p-3 rounded w-full">
+        </div>
+      </div>
+    </div>
+
+    <!-- ONDE -->
+    <div class="bg-white p-6 rounded-2xl shadow">
+      <h2 class="font-bold text-lg mb-2">Onde</h2>
+      <input id="f_nome" class="w-full border p-3 rounded mb-3" placeholder="Nome">
+      <input id="f_razao" class="w-full border p-3 rounded mb-3" placeholder="Razão social">
+      <input id="f_endereco" class="w-full border p-3 rounded" placeholder="Endereço">
+    </div>
+
+    <!-- ✅ CARACTERÍSTICAS DO PNEU (FALTAVA) -->
+    <div class="bg-white p-6 rounded-2xl shadow">
+      <h2 class="font-bold text-lg mb-4">Características do pneu</h2>
+
+      <div class="grid md:grid-cols-3 gap-3">
+        <div>
+          <label class="text-sm text-slate-600">Marca</label>
+          <select id="c_marca" class="border p-3 rounded w-full">
+            <option value="">Selecione</option>
+            <option>Goodyear</option>
+            <option>Continental</option>
+            <option>Pirelli</option>
+            <option>Michelin</option>
+            <option>Dunlop</option>
+            <option>Outros</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="text-sm text-slate-600">Medida</label>
+          <select id="c_medida" class="border p-3 rounded w-full">
+            <option value="">Selecione</option>
+            <option>395/65R22.5</option>
+            <option>295/80R</option>
+            <option>275/80R</option>
+            <option>Outros</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="text-sm text-slate-600">Desenho</label>
+          <select id="c_desenho" class="border p-3 rounded w-full">
+            <option value="">Selecione</option>
+            <option>Liso</option>
+            <option>Borrachudo</option>
+            <option>Misto</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="text-sm text-slate-600">Profundidade</label>
+          <select id="c_profundidade" class="border p-3 rounded w-full">
+            <option value="">Selecione</option>
+            <option>0 mm</option><option>2 mm</option><option>4 mm</option><option>6 mm</option>
+            <option>8 mm</option><option>10 mm</option><option>12 mm</option><option>14 mm</option>
+            <option>16 mm</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="text-sm text-slate-600">Vida</label>
+          <select id="c_vida" class="border p-3 rounded w-full">
+            <option value="">Selecione</option>
+            <option>Novo</option>
+            <option>R1</option>
+            <option>R2</option>
+            <option>R3</option>
+            <option>R4</option>
+            <option>R5</option>
+            <option>Outro</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- INFORMAÇÕES DO PNEU -->
+    <div class="bg-white p-6 rounded-2xl shadow">
+      <h2 class="font-bold text-lg mb-4">Informações do pneu</h2>
+
+      <div class="grid md:grid-cols-2 gap-3">
+        <div>
+          <label class="text-sm text-slate-600">DOT</label>
+          <input id="i_dot" class="border p-3 rounded w-full" placeholder="DOT">
+        </div>
+
+        <div>
+          <label class="text-sm text-slate-600">Número de fogo</label>
+          <input id="i_fogo" class="border p-3 rounded w-full" placeholder="Nº de fogo">
+        </div>
+
+        <div>
+          <label class="text-sm text-slate-600">Cliente</label>
+          <input id="i_cliente" class="border p-3 rounded w-full" placeholder="Cliente">
+        </div>
+
+        <div>
+          <label class="text-sm text-slate-600">Data</label>
+          <input id="i_data" type="date" class="border p-3 rounded w-full">
+        </div>
+
+        <div>
+          <label class="text-sm text-slate-600">Mês de referência</label>
+          <select id="i_mesRef" class="border p-3 rounded w-full">
+            <option value="">Selecione</option>
+            <option>Janeiro</option><option>Fevereiro</option><option>Março</option><option>Abril</option>
+            <option>Maio</option><option>Junho</option><option>Julho</option><option>Agosto</option>
+            <option>Setembro</option><option>Outubro</option><option>Novembro</option><option>Dezembro</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="text-sm text-slate-600">Avaria apresentada</label>
+          <select id="i_avaria" class="border p-3 rounded w-full">
+            <option value="">Selecione</option>
+            <option>Deslocamento de linner</option>
+            <option>Cortes no flanco</option>
+            <option>Deslocamento de ombro</option>
+            <option>Estouro de carcaça</option>
+            <option>Desagregamento de talão</option>
+          </select>
+        </div>
+
+        <div class="md:col-span-2">
+          <label class="text-sm text-slate-600">Causa</label>
+          <select id="i_causa" class="border p-3 rounded w-full">
+            <option value="">Selecione</option>
+            <option>Defeito da pista</option>
+            <option>Falta de rodízio de pneu</option>
+            <option>Velocidade incompatível com o percurso</option>
+            <option>Avaria por objetos cortantes ou perfurantes</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- FOTOS -->
+    <div class="bg-white p-6 rounded-2xl shadow">
+      <h2 class="font-bold text-lg mb-2">Fotos do pneu (até 4)</h2>
+      <input id="f_fotos" type="file" accept="image/*" multiple class="border p-3 rounded w-full">
+      <p class="text-sm text-slate-500 mt-2">Selecione no máximo 4 imagens.</p>
+      <div id="previewFotos" class="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4"></div>
+    </div>
+
+  </main>
+
+  <script type="module" src="./js/firebase.js"></script>
+  <script type="module" src="./js/pneuForm.js"></script>
+</body>
+</html>
