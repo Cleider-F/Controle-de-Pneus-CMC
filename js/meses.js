@@ -14,6 +14,9 @@ import { db } from "./firebase.js";
 
 const grid = document.getElementById("gridMeses");
 
+const modal = document.getElementById("modalMes");
+const mesPicker = document.getElementById("mesPicker");
+
 const MESES = [
   "Janeiro","Fevereiro","Março","Abril","Maio","Junho",
   "Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"
@@ -25,7 +28,7 @@ function badgeStatus(status) {
     : `<span class="text-xs px-2 py-1 rounded bg-yellow-100 text-yellow-700">Em andamento</span>`;
 }
 
-function toggleStatusHTML(mesId, status) {
+function toggleHTML(mesId, status) {
   const finalizado = status === "finalizado";
   return `
     <button
@@ -66,7 +69,7 @@ function cardMesHTML(id, mes) {
       <div class="flex justify-between items-center">
         <div class="flex items-center gap-2">
           <span class="text-sm text-slate-500">Status</span>
-          ${toggleStatusHTML(id, status)}
+          ${toggleHTML(id, status)}
         </div>
 
         <button
@@ -80,7 +83,7 @@ function cardMesHTML(id, mes) {
   `;
 }
 
-/* ========= LISTAR MESES (REALTIME) ========= */
+/* ===== LISTAGEM realtime ===== */
 if (grid) {
   const q = query(collection(db, "meses"), orderBy("criadoEm", "desc"));
 
@@ -93,62 +96,61 @@ if (grid) {
       });
     },
     (err) => {
-      console.error("ERRO onSnapshot meses:", err);
+      console.error("ERRO ao carregar meses:", err);
       alert("Erro ao carregar meses. Veja o console (F12).");
     }
   );
 }
 
-/* ========= CRIAR MÊS (SELETOR MÊS/ANO) ========= */
-window.criarMesUI = function () {
-  // input month invisível (abre seletor do browser)
-  const input = document.createElement("input");
-  input.type = "month";
-  input.style.position = "fixed";
-  input.style.left = "-9999px";
-  input.style.top = "0";
-  document.body.appendChild(input);
-
-  const cleanup = () => {
-    try { document.body.removeChild(input); } catch {}
-  };
-
-  input.addEventListener("change", async (e) => {
-    const valor = e.target.value; // "2026-02"
-    if (!valor) return cleanup();
-
-    const [anoStr, mesStr] = valor.split("-");
-    const ano = Number(anoStr);
-    const mesNumero = Number(mesStr); // 1..12
-    const nome = `${MESES[mesNumero - 1]} / ${ano}`;
-
-    try {
-      console.log("Criando mês:", nome, { ano, mes: mesNumero });
-
-      await addDoc(collection(db, "meses"), {
-        nome,
-        ano,
-        mes: mesNumero,
-        criadoEm: serverTimestamp(),
-        totalPneus: 0,
-        status: "em_andamento"
-      });
-
-      alert("Mês criado: " + nome);
-    } catch (err) {
-      console.error("ERRO ao criar mês:", err);
-      alert("Não foi possível criar o mês. Veja o console (F12).");
-    } finally {
-      cleanup();
-    }
-  });
-
-  // fallback se o browser bloquear o month-picker
-  input.addEventListener("cancel", cleanup);
-  input.click();
+/* ===== MODAL ===== */
+window.abrirModalMes = function () {
+  if (!modal || !mesPicker) return alert("Modal não encontrado.");
+  mesPicker.value = ""; // limpa
+  modal.classList.remove("hidden");
+  mesPicker.focus();
 };
 
-/* ========= TOGGLE STATUS ========= */
+window.fecharModalMes = function () {
+  if (!modal) return;
+  modal.classList.add("hidden");
+};
+
+window.confirmarCriarMes = async function () {
+  const valor = (mesPicker?.value || "").trim(); // "2026-02"
+  if (!valor) return alert("Selecione (ou digite) mês/ano.");
+
+  // valida formato básico
+  const ok = /^\d{4}-\d{2}$/.test(valor);
+  if (!ok) return alert("Formato inválido. Use: 2026-02");
+
+  const [anoStr, mesStr] = valor.split("-");
+  const ano = Number(anoStr);
+  const mesNumero = Number(mesStr);
+
+  if (!ano || mesNumero < 1 || mesNumero > 12) {
+    return alert("Mês/ano inválido.");
+  }
+
+  const nome = `${MESES[mesNumero - 1]} / ${ano}`;
+
+  try {
+    await addDoc(collection(db, "meses"), {
+      nome,
+      ano,
+      mes: mesNumero,
+      criadoEm: serverTimestamp(),
+      totalPneus: 0,
+      status: "em_andamento"
+    });
+
+    window.fecharModalMes();
+  } catch (err) {
+    console.error("ERRO ao criar mês:", err);
+    alert("Não foi possível criar o mês. Veja o console (F12).");
+  }
+};
+
+/* ===== TOGGLE STATUS ===== */
 window.toggleStatusMes = async function (mesId, statusAtual) {
   try {
     const novo = statusAtual === "finalizado" ? "em_andamento" : "finalizado";
@@ -157,12 +159,12 @@ window.toggleStatusMes = async function (mesId, statusAtual) {
       atualizadoEm: serverTimestamp()
     });
   } catch (err) {
-    console.error("ERRO ao alternar status:", err);
+    console.error("ERRO ao alterar status:", err);
     alert("Erro ao alterar status. Veja o console (F12).");
   }
 };
 
-/* ========= EXCLUIR MÊS ========= */
+/* ===== EXCLUIR MÊS ===== */
 window.excluirMes = async function (mesId) {
   if (!confirm("Excluir este mês? (o documento do mês será removido)")) return;
 
@@ -174,7 +176,7 @@ window.excluirMes = async function (mesId) {
   }
 };
 
-/* ========= ABRIR ========= */
+/* ===== ABRIR ===== */
 window.abrirMes = function (id) {
   localStorage.setItem("mesAtual", id);
   window.location.href = "./mes.html";

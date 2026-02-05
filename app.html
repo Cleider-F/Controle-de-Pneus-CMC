@@ -1,38 +1,69 @@
 <!DOCTYPE html>
-<html>
+<html lang="pt-BR">
 <head>
-<meta charset="UTF-8">
-<script src="https://cdn.tailwindcss.com"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Meses</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+    .card{ background:white; border-radius:16px; box-shadow:0 6px 18px rgba(0,0,0,.06); }
+  </style>
 </head>
 
 <body class="bg-slate-100">
 
-<script type="module" src="./js/authGuard.js"></script>
+  <script type="module" src="./js/authGuard.js"></script>
 
-<header class="bg-white p-4 shadow flex justify-between">
-<h1 class="font-bold text-xl">Meses</h1>
+  <header class="bg-white p-4 shadow flex justify-between items-center">
+    <h1 class="font-bold text-xl">Meses</h1>
 
-<button onclick="logout()"
-class="bg-red-500 text-white px-4 py-2 rounded">
-Sair
-</button>
-</header>
+    <button onclick="logout()"
+      class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded">
+      Sair
+    </button>
+  </header>
 
-<main class="p-6">
+  <main class="p-6">
+    <button onclick="abrirModalMes()"
+      class="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-xl font-semibold mb-6">
+      + Criar Mês
+    </button>
 
-<button onclick="criarMesUI()"
-class="bg-green-600 text-white px-6 py-3 rounded mb-6">
-+ Criar Mês
-</button>
+    <div id="gridMeses" class="grid md:grid-cols-3 gap-6"></div>
+  </main>
 
-<div id="gridMeses"
-class="grid md:grid-cols-3 gap-6"></div>
+  <!-- MODAL CRIAR MÊS -->
+  <div id="modalMes" class="hidden fixed inset-0 bg-black/40 flex items-center justify-center p-4">
+    <div class="card w-full max-w-md p-6">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-lg font-bold">Criar mês</h2>
+        <button onclick="fecharModalMes()" class="text-slate-500 hover:text-slate-700 text-2xl leading-none">&times;</button>
+      </div>
 
-</main>
+      <label class="block text-sm text-slate-600 mb-2">Selecione mês/ano</label>
+      <input id="mesPicker" type="month" class="w-full border p-3 rounded-xl">
 
-<script type="module" src="./js/firebase.js"></script>
-<script type="module" src="./js/auth.js"></script>
-<script type="module" src="./js/meses.js"></script>
+      <p class="text-xs text-slate-500 mt-2">
+        Se o seletor não aparecer no seu navegador, digite no formato: 2026-02
+      </p>
+
+      <div class="flex gap-2 mt-6">
+        <button onclick="fecharModalMes()"
+          class="flex-1 bg-slate-200 hover:bg-slate-300 px-4 py-2 rounded-xl">
+          Cancelar
+        </button>
+
+        <button onclick="confirmarCriarMes()"
+          class="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl font-semibold">
+          Criar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="./js/firebase.js"></script>
+  <script type="module" src="./js/meses.js"></script>
 
 </body>
 </html>
