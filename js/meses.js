@@ -1,40 +1,70 @@
-import {
+﻿import {
   collection,
   addDoc,
   serverTimestamp,
   onSnapshot,
   query,
   orderBy,
+  where,
+  limit,
+  getDocs,
+  writeBatch,
   doc,
-  updateDoc,
-  deleteDoc
+  updateDoc
 } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
-import { db } from "./firebase.js";
+import {
+  ref as storageRef,
+  deleteObject
+} from "https://www.gstatic.com/firebasejs/9.23.0/firebase-storage.js";
+
+import { db, storage } from "./firebase.js";
+import { authReady } from "./authGuard.js?v=20260531-2";
+
+await authReady;
 
 const MESES = [
   "Janeiro","Fevereiro","Março","Abril","Maio","Junho",
   "Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"
 ];
 
+function escapeHTML(valor) {
+  return String(valor ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
 function badgeStatus(status) {
   return status === "finalizado"
-    ? `<span class="text-xs px-2 py-1 rounded bg-green-100 text-green-700">Finalizado</span>`
-    : `<span class="text-xs px-2 py-1 rounded bg-yellow-100 text-yellow-700">Em andamento</span>`;
+    ? `<span class="badge success">Finalizado</span>`
+    : `<span class="badge warning">Em andamento</span>`;
 }
 
 function toggleHTML(mesId, status) {
   const finalizado = status === "finalizado";
+
+  if (finalizado) {
+    return `
+      <button
+        class="toggle-shell on"
+        disabled
+        title="Mês finalizado"
+      >
+        <span></span>
+      </button>
+    `;
+  }
+
   return `
     <button
-      class="relative w-14 h-8 rounded-full transition ${finalizado ? "bg-green-600" : "bg-slate-300 opacity-80"}"
+      class="toggle-shell"
       onclick="toggleStatusMes('${mesId}', '${status || "em_andamento"}')"
-      title="Alternar status"
+      title="Finalizar mês"
     >
-      <span
-        class="absolute top-1 left-1 w-6 h-6 bg-white rounded-full transition-all shadow
-        ${finalizado ? "translate-x-6" : "translate-x-0"}"
-      ></span>
+      <span></span>
     </button>
   `;
 }
@@ -42,35 +72,39 @@ function toggleHTML(mesId, status) {
 function cardMesHTML(id, mes) {
   const status = mes.status || "em_andamento";
   const finalizado = status === "finalizado";
+  const nome = escapeHTML(mes.nome || "—");
+  const totalPneus = Number(mes.totalPneus || 0);
 
   return `
-    <div class="bg-white p-6 rounded-2xl shadow flex flex-col gap-4">
+    <div class="app-card">
       <div class="flex justify-between items-start gap-3">
         <div>
-          <h2 class="text-xl font-bold">${mes.nome || "—"}</h2>
-          <div class="mt-2 flex items-center gap-2 flex-wrap">
+          <h3>${nome}</h3>
+          <div class="card-meta mt-3">
             ${badgeStatus(status)}
-            <span class="text-sm text-slate-500">• Pneus: ${mes.totalPneus || 0}</span>
+            <span>Pneus: ${totalPneus}</span>
           </div>
         </div>
 
         <button
           onclick="excluirMes('${id}')"
-          class="text-red-600 hover:text-red-700 text-xl leading-none"
+          class="app-btn danger icon-only"
           title="Excluir mês"
-        >🗑️</button>
+          aria-label="Excluir mês"
+        ><i data-lucide="trash-2"></i></button>
       </div>
 
-      <div class="flex justify-between items-center gap-3">
+      <div class="card-actions">
         <div class="flex items-center gap-2">
-          <span class="text-sm text-slate-500">Status</span>
+          <span class="text-sm text-slate-500 font-semibold">Status</span>
           ${toggleHTML(id, status)}
         </div>
 
         <button
           onclick="abrirMes('${id}')"
-          class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl"
+          class="app-btn blue"
         >
+          <i data-lucide="${finalizado ? "eye" : "folder-open"}"></i>
           ${finalizado ? "Visualizar" : "Abrir"}
         </button>
       </div>
@@ -78,8 +112,8 @@ function cardMesHTML(id, mes) {
   `;
 }
 
-/* ========= INIT (só depois do DOM pronto) ========= */
-document.addEventListener("DOMContentLoaded", () => {
+/* ========= INIT ========= */
+function iniciarMeses() {
   const grid = document.getElementById("gridMeses");
 
   // Se não for a página app.html, não executa nada (evita erro no mobile abrindo outra página)
@@ -97,6 +131,10 @@ document.addEventListener("DOMContentLoaded", () => {
       snap.forEach((d) => {
         grid.innerHTML += cardMesHTML(d.id, d.data());
       });
+      if (snap.empty) {
+        grid.innerHTML = `<div class="empty-state col-span-full">Nenhum mês criado ainda.</div>`;
+      }
+      if (window.lucide) window.lucide.createIcons();
     },
     (err) => {
       console.error("ERRO ao carregar meses:", err);
@@ -135,6 +173,7 @@ document.addEventListener("DOMContentLoaded", () => {
     popularAnos();
     selMes.value = String(new Date().getMonth() + 1);
     modal.classList.remove("hidden");
+    if (window.lucide) window.lucide.createIcons();
   };
 
   window.fecharModalMes = function () {
@@ -155,6 +194,19 @@ document.addEventListener("DOMContentLoaded", () => {
     const nome = `${MESES[mesNumero - 1]} / ${ano}`;
 
     try {
+      const existente = await getDocs(
+        query(
+          collection(db, "meses"),
+          where("mes", "==", mesNumero),
+          where("ano", "==", ano),
+          limit(1)
+        )
+      );
+
+      if (!existente.empty) {
+        return alert("Este mês já foi criado.");
+      }
+
       await addDoc(collection(db, "meses"), {
         nome,
         ano,
@@ -170,14 +222,49 @@ document.addEventListener("DOMContentLoaded", () => {
       alert("Não foi possível criar o mês. Veja o console (F12).");
     }
   };
-});
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", iniciarMeses, { once: true });
+} else {
+  iniciarMeses();
+}
+
+async function excluirFotos(urls) {
+  const unicas = [...new Set(urls.filter(Boolean))];
+  const exclusoes = unicas.map(async (url) => {
+    try {
+      await deleteObject(storageRef(storage, url));
+    } catch (err) {
+      console.warn("Não foi possível excluir uma foto do Storage:", err);
+    }
+  });
+
+  await Promise.allSettled(exclusoes);
+}
+
+async function excluirDocsEmLotes(refs) {
+  const tamanhoLote = 450;
+
+  for (let i = 0; i < refs.length; i += tamanhoLote) {
+    const batch = writeBatch(db);
+    refs.slice(i, i + tamanhoLote).forEach((ref) => batch.delete(ref));
+    await batch.commit();
+  }
+}
 
 /* ========= ações globais ========= */
 window.toggleStatusMes = async function (mesId, statusAtual) {
   try {
-    const novo = statusAtual === "finalizado" ? "em_andamento" : "finalizado";
+    if (statusAtual === "finalizado") {
+      alert("Mês finalizado não pode ser reaberto.");
+      return;
+    }
+
+    if (!confirm("Finalizar este mês? Depois disso os pneus ficarão somente leitura.")) return;
+
     await updateDoc(doc(db, "meses", mesId), {
-      status: novo,
+      status: "finalizado",
       atualizadoEm: serverTimestamp()
     });
   } catch (err) {
@@ -187,10 +274,22 @@ window.toggleStatusMes = async function (mesId, statusAtual) {
 };
 
 window.excluirMes = async function (mesId) {
-  if (!confirm("Excluir este mês? (Pneus dentro do mês não são removidos automaticamente)")) return;
+  if (!confirm("Excluir este mês e todos os pneus vinculados?")) return;
 
   try {
-    await deleteDoc(doc(db, "meses", mesId));
+    const pneusSnap = await getDocs(collection(db, "meses", mesId, "pneus"));
+    const urlsFotos = [];
+    const refsParaExcluir = [];
+
+    pneusSnap.forEach((pneuDoc) => {
+      refsParaExcluir.push(pneuDoc.ref);
+      const fotos = pneuDoc.data()?.fotos;
+      if (Array.isArray(fotos)) urlsFotos.push(...fotos);
+    });
+
+    await excluirFotos(urlsFotos);
+    refsParaExcluir.push(doc(db, "meses", mesId));
+    await excluirDocsEmLotes(refsParaExcluir);
   } catch (err) {
     console.error("ERRO ao excluir mês:", err);
     alert("Erro ao excluir mês. Veja o console (F12).");
@@ -201,3 +300,4 @@ window.abrirMes = function (id) {
   localStorage.setItem("mesAtual", id);
   window.location.href = "./mes.html";
 };
+

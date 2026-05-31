@@ -1,21 +1,26 @@
-import {
+﻿import {
   doc,
   getDoc,
-  setDoc,
   updateDoc,
-  deleteDoc,
-  runTransaction,
+  writeBatch,
   collection,
+  collectionGroup,
   addDoc,
   onSnapshot,
   query,
   orderBy,
+  runTransaction,
   getDocs,
-  serverTimestamp,
-  increment
+  serverTimestamp
 } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
-import { db } from "./firebase.js";
+import {
+  ref as storageRef,
+  deleteObject
+} from "https://www.gstatic.com/firebasejs/9.23.0/firebase-storage.js";
+
+import { db, storage } from "./firebase.js";
+import { authReady } from "./authGuard.js?v=20260531-2";
 
 const mesId = localStorage.getItem("mesAtual");
 const grid = document.getElementById("gridPneus");
@@ -49,12 +54,96 @@ function baixarArquivo(texto, nomeArquivo, mime = "text/csv;charset=utf-8;") {
   URL.revokeObjectURL(url);
 }
 
+function escapeHTML(valor) {
+  return String(valor ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function dadosOnde(pneu) {
+  const onde = pneu?.onde || {};
+  return {
+    nome: onde.nome || "",
+    razao: onde.razao ?? onde.razaoSocial ?? "",
+    endereco: onde.endereco || ""
+  };
+}
+
+function dadosInfo(pneu) {
+  const info = pneu?.info || pneu?.informacoesPneu || {};
+  return {
+    dot: info.dot || "",
+    fogo: info.fogo ?? info.numeroFogo ?? "",
+    cliente: info.cliente || "",
+    data: info.data || "",
+    mesReferencia: info.mesReferencia || "",
+    avaria: info.avaria || "",
+    causa: info.causa || ""
+  };
+}
+
+function pneuInicial(numero) {
+  return {
+    numero,
+    status: "em_andamento",
+    criadoEm: serverTimestamp(),
+    atualizadoEm: serverTimestamp(),
+    planejamento: { como: "", instrucoes: "" },
+    quando: { inicio: "", fim: "" },
+    onde: { nome: "", razao: "", endereco: "" },
+    responsaveis: [],
+    caracteristicas: { marca: "", medida: "", desenho: "", profundidade: "", vida: "" },
+    info: {
+      dot: "",
+      fogo: "",
+      cliente: "",
+      data: "",
+      mesReferencia: "",
+      avaria: "",
+      causa: ""
+    },
+    fotos: []
+  };
+}
+
+async function excluirFotos(urls) {
+  const unicas = [...new Set((urls || []).filter(Boolean))];
+  const exclusoes = unicas.map(async (url) => {
+    try {
+      await deleteObject(storageRef(storage, url));
+    } catch (err) {
+      console.warn("Não foi possível excluir uma foto do Storage:", err);
+    }
+  });
+
+  await Promise.allSettled(exclusoes);
+}
+
+async function fotosSemOutrasReferencias(mesId, urls) {
+  const urlsCandidatas = [...new Set((urls || []).filter(Boolean))];
+  if (!urlsCandidatas.length) return [];
+
+  const usadasEmOutrosPneus = new Set();
+  const snap = await getDocs(collection(db, "meses", mesId, "pneus"));
+
+  snap.forEach((pneuDoc) => {
+    const fotos = pneuDoc.data()?.fotos;
+    if (!Array.isArray(fotos)) return;
+    fotos.forEach((url) => usadasEmOutrosPneus.add(url));
+  });
+
+  return urlsCandidatas.filter((url) => !usadasEmOutrosPneus.has(url));
+}
+
 if (!mesId) {
   alert("Nenhum mês selecionado.");
   window.location.href = "./app.html";
 }
 
-let mesStatus = "aberto";
+let mesStatus = "em_andamento";
 
 /* =========================
    Mes header + bloqueios
@@ -67,14 +156,15 @@ async function carregarMes() {
     mesTitulo.textContent = "Mês não encontrado";
     mesStatus = "finalizado";
     aplicarBloqueioMes();
-    return;
+    return null;
   }
 
   const mes = snap.data();
-  mesStatus = mes.status || "aberto";
+  mesStatus = mes.status || "em_andamento";
 
   mesTitulo.textContent = `${mes.nome || "Mês"} • Status: ${mesStatus} • Pneus: ${mes.totalPneus || 0}`;
   aplicarBloqueioMes();
+  return mes;
 }
 
 function aplicarBloqueioMes() {
@@ -88,32 +178,65 @@ function aplicarBloqueioMes() {
 
   if (btnFinalizarMes) {
     btnFinalizarMes.disabled = bloqueado;
-    btnFinalizarMes.textContent = bloqueado ? "Mês finalizado" : "Finalizar mês";
+    btnFinalizarMes.innerHTML = bloqueado
+      ? `<i data-lucide="lock-keyhole"></i>Mês finalizado`
+      : `<i data-lucide="lock"></i>Finalizar mês`;
     btnFinalizarMes.style.opacity = bloqueado ? "0.5" : "1";
     btnFinalizarMes.style.pointerEvents = bloqueado ? "none" : "auto";
   }
+
+  if (window.lucide) window.lucide.createIcons();
 }
 
 /* =========================
-   Contador global seguro
+   Numeração global única
 ========================= */
+function formatarNumeroPneu(indice) {
+  return String(indice).padStart(6, "0");
+}
+
+function numeroParaInteiro(numero) {
+  const valor = Number(String(numero || "").replace(/\D/g, ""));
+  return Number.isFinite(valor) ? valor : 0;
+}
+
+async function buscarMaiorNumeroPneuGlobal() {
+  const snap = await getDocs(collectionGroup(db, "pneus"));
+  let maior = 0;
+
+  snap.forEach((pneuDoc) => {
+    maior = Math.max(maior, numeroParaInteiro(pneuDoc.data()?.numero));
+  });
+
+  return maior;
+}
+
 async function gerarNumeroPneu() {
-  const ref = doc(db, "config", "contadorPneus");
+  const maiorNumeroExistente = await buscarMaiorNumeroPneuGlobal();
+  const contadorRef = doc(db, "config", "contadorPneus");
 
   return await runTransaction(db, async (tx) => {
-    const snap = await tx.get(ref);
+    const snap = await tx.get(contadorRef);
+    const contadorAtual = snap.exists() ? Number(snap.data().total || 0) : 0;
+    const proximo = Math.max(contadorAtual, maiorNumeroExistente) + 1;
 
-    if (!snap.exists()) {
-      tx.set(ref, { total: 1 });
-      return "000001";
-    }
+    tx.set(contadorRef, {
+      total: proximo,
+      atualizadoEm: serverTimestamp()
+    }, { merge: true });
 
-    const atual = snap.data().total || 0;
-    const proximo = atual + 1;
-
-    tx.update(ref, { total: increment(1) });
-    return String(proximo).padStart(6, "0");
+    return formatarNumeroPneu(proximo);
   });
+}
+
+async function atualizarTotalPneusDoMes(mesId) {
+  const snap = await getDocs(collection(db, "meses", mesId, "pneus"));
+  await updateDoc(doc(db, "meses", mesId), {
+    totalPneus: snap.size,
+    atualizadoEm: serverTimestamp()
+  });
+
+  return snap.size;
 }
 
 /* =========================
@@ -121,6 +244,9 @@ async function gerarNumeroPneu() {
 ========================= */
 window.criarPneuUI = async function () {
   try {
+    await authReady;
+    await carregarMes();
+
     if (mesStatus === "finalizado") {
       alert("Mês finalizado. Não é possível criar novos pneus.");
       return;
@@ -128,33 +254,12 @@ window.criarPneuUI = async function () {
 
     const numero = await gerarNumeroPneu();
 
-    await addDoc(collection(db, "meses", mesId, "pneus"), {
-      numero,
-      status: "em_andamento",
-      criadoEm: serverTimestamp(),
-      atualizadoEm: serverTimestamp(),
+    await addDoc(collection(db, "meses", mesId, "pneus"), pneuInicial(numero));
 
-      planejamento: { como: "", instrucoes: "" },
-      quando: { inicio: "", fim: "" },
-      onde: { nome: "", razaoSocial: "", endereco: "" },
-      responsaveis: [],
-      caracteristicas: { marca: "", medida: "", desenho: "", profundidade: "", vida: "" },
-      informacoesPneu: {
-        dot: "",
-        numeroFogo: "",
-        cliente: "",
-        data: "",
-        mesReferencia: "",
-        avaria: "",
-        causa: ""
-      },
-      fotos: []
-    });
-
-    await updateDoc(doc(db, "meses", mesId), { totalPneus: increment(1) });
+    await atualizarTotalPneusDoMes(mesId);
 
     alert(`Pneu ${numero} criado!`);
-    carregarMes();
+    await carregarMes();
   } catch (e) {
     console.error(e);
     alert("Erro ao criar pneu. Veja o console (F12).");
@@ -167,15 +272,17 @@ window.criarPneuUI = async function () {
 function iniciarListaRealtime() {
   const q = query(collection(db, "meses", mesId, "pneus"), orderBy("criadoEm", "desc"));
 
-  onSnapshot(q, (snap) => {
+  onSnapshot(q, async (snap) => {
+    await carregarMes();
     grid.innerHTML = "";
 
     if (snap.empty) {
       grid.innerHTML = `
-        <div class="col-span-full bg-white p-6 rounded-xl shadow text-slate-600">
+        <div class="empty-state col-span-full">
           Nenhum pneu criado ainda.
         </div>
       `;
+      if (window.lucide) window.lucide.createIcons();
       return;
     }
 
@@ -183,54 +290,65 @@ function iniciarListaRealtime() {
       const pneu = d.data();
       const id = d.id;
       const status = pneu.status || "em_andamento";
+      const caracteristicas = pneu.caracteristicas || {};
+      const numero = escapeHTML(pneu.numero || "—");
+      const marca = escapeHTML(caracteristicas.marca || "Sem marca");
+      const medida = escapeHTML(caracteristicas.medida || "");
+      const desenho = escapeHTML(caracteristicas.desenho || "-");
+      const vida = escapeHTML(caracteristicas.vida || "-");
+      const profundidade = escapeHTML(caracteristicas.profundidade || "-");
 
       const badge = status === "finalizado"
-        ? `<span class="text-xs px-2 py-1 rounded bg-green-100 text-green-700">Finalizado</span>`
-        : `<span class="text-xs px-2 py-1 rounded bg-yellow-100 text-yellow-700">Em andamento</span>`;
+        ? `<span class="badge success">Finalizado</span>`
+        : `<span class="badge warning">Em andamento</span>`;
 
       const bloqueadoMes = mesStatus === "finalizado";
 
       grid.innerHTML += `
-        <div class="bg-white p-5 rounded-2xl shadow">
+        <div class="app-card">
           <div class="flex items-center justify-between mb-3">
             <div>
-              <p class="text-sm text-slate-400">#${pneu.numero || "—"}</p>
-              <p class="font-bold text-lg">${pneu.caracteristicas?.marca || "Sem marca"} ${pneu.caracteristicas?.medida || ""}</p>
+              <p class="text-sm text-slate-400 font-semibold">#${numero}</p>
+              <h3>${marca} ${medida}</h3>
             </div>
             ${badge}
           </div>
 
-          <div class="text-sm text-slate-600 mb-4">
-            ${pneu.caracteristicas?.desenho || "-"} • ${pneu.caracteristicas?.vida || "-"} • ${pneu.caracteristicas?.profundidade || "-"}
+          <div class="card-meta">
+            ${desenho} • ${vida} • ${profundidade}
           </div>
 
-          <div class="flex gap-2">
+          <div class="card-actions">
             <button
               onclick="abrirPneu('${id}')"
-              class="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-xl">
+              class="app-btn blue">
+              <i data-lucide="${bloqueadoMes ? "eye" : "folder-open"}"></i>
               ${bloqueadoMes ? "Visualizar" : "Abrir"}
             </button>
 
             <button
               onclick="duplicarPneu('${id}')"
-              class="flex-1 bg-slate-800 hover:bg-slate-900 text-white py-2 rounded-xl"
-              ${bloqueadoMes ? "disabled style='opacity:.5;pointer-events:none'" : ""}>
+              class="app-btn dark"
+              ${bloqueadoMes ? "disabled" : ""}>
+              <i data-lucide="copy"></i>
               Duplicar
             </button>
 
             <button
               onclick="excluirPneu('${id}')"
-              class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-xl"
-              ${bloqueadoMes ? "disabled style='opacity:.5;pointer-events:none'" : ""}>
-              🗑️
+              class="app-btn danger icon-only"
+              ${bloqueadoMes ? "disabled" : ""}
+              title="Excluir pneu"
+              aria-label="Excluir pneu">
+              <i data-lucide="trash-2"></i>
             </button>
           </div>
         </div>
       `;
     });
 
-    // Atualiza título/contador também
-    carregarMes();
+    // O título/contador já foi atualizado antes da renderização.
+    if (window.lucide) window.lucide.createIcons();
   });
 }
 
@@ -248,6 +366,9 @@ window.abrirPneu = function(pneuId){
 ========================= */
 window.duplicarPneu = async function (pneuId) {
   try {
+    await authReady;
+    await carregarMes();
+
     if (mesStatus === "finalizado") {
       alert("Mês finalizado. Não é possível duplicar.");
       return;
@@ -259,16 +380,19 @@ window.duplicarPneu = async function (pneuId) {
 
     const origem = snap.data();
     const novoNumero = await gerarNumeroPneu();
+    const { info, informacoesPneu, onde, ...restante } = origem;
 
     await addDoc(collection(db, "meses", mesId, "pneus"), {
-      ...origem,
+      ...restante,
       numero: novoNumero,
       status: "em_andamento",
+      onde: dadosOnde(origem),
+      info: dadosInfo(origem),
       criadoEm: serverTimestamp(),
       atualizadoEm: serverTimestamp()
     });
 
-    await updateDoc(doc(db, "meses", mesId), { totalPneus: increment(1) });
+    await atualizarTotalPneusDoMes(mesId);
 
     alert(`Duplicado: ${novoNumero}`);
   } catch (e) {
@@ -281,6 +405,8 @@ window.duplicarPneu = async function (pneuId) {
    Excluir
 ========================= */
 window.excluirPneu = async function(pneuId){
+  await authReady;
+
   const ok = confirm("Deseja realmente excluir este pneu?");
   if(!ok) return;
 
@@ -290,32 +416,37 @@ window.excluirPneu = async function(pneuId){
     return;
   }
 
-  const mesRef      = doc(db, "meses", mesId);
-  const pneuRef     = doc(db, "meses", mesId, "pneus", pneuId);
-  const contadorRef = doc(db, "config", "contadorPneus"); // ajuste se seu caminho for outro
+  const mesRef = doc(db, "meses", mesId);
+  const pneuRef = doc(db, "meses", mesId, "pneus", pneuId);
+  let fotosParaExcluir = [];
 
   try{
-    await runTransaction(db, async (tx) => {
-      // (opcional mas recomendado) garantir que o contador existe
-      const contadorSnap = await tx.get(contadorRef);
-      if(!contadorSnap.exists()){
-        throw new Error("Crie config/contadorPneus!");
-      }
+    const mesSnap = await getDoc(mesRef);
+    const pneuSnap = await getDoc(pneuRef);
 
-      // apaga o pneu
-      tx.delete(pneuRef);
+    if (!mesSnap.exists()) {
+      throw new Error("Mês não encontrado.");
+    }
 
-      // decrementa contador do mês
-      tx.update(mesRef, { totalPneus: increment(-1) });
+    if ((mesSnap.data().status || "em_andamento") === "finalizado") {
+      throw new Error("Mês finalizado. Não é possível excluir pneus.");
+    }
 
-      // decrementa contador global
-      tx.update(contadorRef, { total: increment(-1) });
-    });
+    if (!pneuSnap.exists()) {
+      throw new Error("Pneu não encontrado ou já excluído.");
+    }
 
-    alert("Pneu excluído e contador atualizado.");
+    const fotos = pneuSnap.data().fotos;
+    fotosParaExcluir = Array.isArray(fotos) ? fotos : [];
 
-    // recarrega a lista (precisa existir no seu arquivo)
-    if(typeof carregarPneus === "function") carregarPneus();
+    const batch = writeBatch(db);
+    batch.delete(pneuRef);
+    await batch.commit();
+
+    await excluirFotos(await fotosSemOutrasReferencias(mesId, fotosParaExcluir));
+    await atualizarTotalPneusDoMes(mesId);
+    alert("Pneu excluído.");
+    await carregarMes();
 
   }catch(err){
     console.error("Erro ao excluir pneu:", err);
@@ -327,6 +458,9 @@ window.excluirPneu = async function(pneuId){
 ========================= */
 window.finalizarMes = async function () {
   try {
+    await authReady;
+    await carregarMes();
+
     if (mesStatus === "finalizado") return;
 
     if (!confirm("Ao finalizar o mês, não será mais possível criar/editar/duplicar/excluir pneus. Continuar?")) return;
@@ -356,8 +490,9 @@ function escapeCSV(v) {
 
 window.exportarCSV = async function () {
   try {
+    await authReady;
     const mesId = localStorage.getItem("mesAtual");
-    const usuario = localStorage.getItem("usuario") || "—";
+    const usuario = sessionStorage.getItem("usuario") || "—";
 
     if (!mesId) {
       alert("Mês atual não encontrado.");
@@ -395,6 +530,9 @@ window.exportarCSV = async function () {
     linhas.push("");
 
     pneus.forEach((p) => {
+      const onde = dadosOnde(p);
+      const info = dadosInfo(p);
+
       linhas.push(`PNEU Nº;${limparCSV(p.numero || "—")}`);
       linhas.push(`Status;${limparCSV(p.status || "—")}`);
       linhas.push("");
@@ -410,9 +548,9 @@ window.exportarCSV = async function () {
       linhas.push("");
 
       linhas.push("--- ONDE ---");
-      linhas.push(`Nome;${limparCSV(p.onde?.nome || "")}`);
-      linhas.push(`Razao social;${limparCSV(p.onde?.razao || "")}`);
-      linhas.push(`Endereco;${limparCSV(p.onde?.endereco || "")}`);
+      linhas.push(`Nome;${limparCSV(onde.nome)}`);
+      linhas.push(`Razao social;${limparCSV(onde.razao)}`);
+      linhas.push(`Endereco;${limparCSV(onde.endereco)}`);
       linhas.push("");
 
       linhas.push("--- CARACTERISTICAS DO PNEU ---");
@@ -424,13 +562,13 @@ window.exportarCSV = async function () {
       linhas.push("");
 
       linhas.push("--- INFORMACOES DO PNEU ---");
-      linhas.push(`DOT;${limparCSV(p.info?.dot || "")}`);
-      linhas.push(`Numero de fogo;${limparCSV(p.info?.fogo || "")}`);
-      linhas.push(`Cliente;${limparCSV(p.info?.cliente || "")}`);
-      linhas.push(`Data;${limparCSV(p.info?.data || "")}`);
-      linhas.push(`Mes de referencia;${limparCSV(p.info?.mesReferencia || "")}`);
-      linhas.push(`Avaria;${limparCSV(p.info?.avaria || "")}`);
-      linhas.push(`Causa;${limparCSV(p.info?.causa || "")}`);
+      linhas.push(`DOT;${limparCSV(info.dot)}`);
+      linhas.push(`Numero de fogo;${limparCSV(info.fogo)}`);
+      linhas.push(`Cliente;${limparCSV(info.cliente)}`);
+      linhas.push(`Data;${limparCSV(info.data)}`);
+      linhas.push(`Mes de referencia;${limparCSV(info.mesReferencia)}`);
+      linhas.push(`Avaria;${limparCSV(info.avaria)}`);
+      linhas.push(`Causa;${limparCSV(info.causa)}`);
       linhas.push("");
 
       // Fotos (links)
@@ -471,71 +609,13 @@ window.voltarMeses = function () {
   window.location.href = "./app.html";
 };
 
-/* =========================
-   Render Cards
-========================= */
-
-function renderCardPneu(pneuId, p) {
-  const c = p.caracteristicas || {};
-
-  const marca = c.marca || "—";
-  const medida = c.medida || "";
-  const desenho = c.desenho || "—";
-  const profundidade = c.profundidade || "—";
-  const vida = c.vida || "—";
-
-  const status = p.status || "em_andamento";
-  const badge =
-    status === "finalizado"
-      ? `<span class="text-xs px-2 py-1 rounded bg-green-100 text-green-700">Finalizado</span>`
-      : `<span class="text-xs px-2 py-1 rounded bg-yellow-100 text-yellow-700">Em andamento</span>`;
-
-  return `
-    <div class="bg-white p-5 rounded-2xl shadow">
-      <div class="flex justify-between items-start gap-3">
-        <div>
-          <div class="flex items-center gap-2">
-            <p class="text-sm text-slate-500">#${p.numero || "—"}</p>
-            ${badge}
-          </div>
-
-          <p class="font-bold text-lg mt-1">
-            ${marca} ${medida}
-          </p>
-
-          <p class="text-sm text-slate-600 mt-1">
-            ${desenho} • ${profundidade} • ${vida}
-          </p>
-        </div>
-
-        <button
-          onclick="excluirPneu('${pneuId}')"
-          class="text-red-600 hover:text-red-700 text-xl leading-none"
-          title="Excluir"
-        >
-          🗑️
-        </button>
-      </div>
-
-      <div class="flex gap-2 mt-4">
-        <button
-          onclick="abrirPneu('${pneuId}')"
-          class="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-xl"
-        >
-          Abrir
-        </button>
-
-        <button
-          onclick="duplicarPneu('${pneuId}')"
-          class="flex-1 bg-slate-700 hover:bg-slate-800 text-white py-2 rounded-xl"
-        >
-          Duplicar
-        </button>
-      </div>
-    </div>
-  `;
+async function iniciarPagina() {
+  await authReady;
+  await carregarMes();
+  await atualizarTotalPneusDoMes(mesId);
+  await carregarMes();
+  iniciarListaRealtime();
 }
 
+iniciarPagina();
 
-carregarMes();
-iniciarListaRealtime();

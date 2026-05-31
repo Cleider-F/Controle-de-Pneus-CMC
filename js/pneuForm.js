@@ -1,7 +1,6 @@
-import {
+﻿import {
   doc,
   getDoc,
-  setDoc,
   updateDoc,
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
@@ -13,6 +12,9 @@ import {
 } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-storage.js";
 
 import { db, storage } from "./firebase.js";
+import { authReady } from "./authGuard.js?v=20260531-2";
+
+await authReady;
 
 /* =========================
    Helpers
@@ -33,6 +35,120 @@ function pneuDocRef(mesId, pneuId) {
   return doc(db, "meses", mesId, "pneus", pneuId);
 }
 
+const MAX_FOTOS = 4;
+const MAX_FOTO_MB = 8;
+const OUTRO_SELECT_IDS = ["c_marca", "c_medida", "c_vida"];
+
+function dadosOnde(pneu) {
+  const onde = pneu?.onde || {};
+  return {
+    nome: onde.nome || "",
+    razao: onde.razao ?? onde.razaoSocial ?? "",
+    endereco: onde.endereco || ""
+  };
+}
+
+function dadosInfo(pneu) {
+  const info = pneu?.info || pneu?.informacoesPneu || {};
+  return {
+    dot: info.dot || "",
+    fogo: info.fogo ?? info.numeroFogo ?? "",
+    cliente: info.cliente || "",
+    data: info.data || "",
+    mesReferencia: info.mesReferencia || "",
+    avaria: info.avaria || "",
+    causa: info.causa || ""
+  };
+}
+
+function isOutroText(valor) {
+  return ["Outro", "Outros"].includes(String(valor || "").trim());
+}
+
+function getSelectedOptionText(select) {
+  return select?.options?.[select.selectedIndex]?.textContent?.trim() || "";
+}
+
+function findOutroOption(select) {
+  return Array.from(select?.options || []).find((option) => isOutroText(option.textContent || option.value));
+}
+
+function getOutroInputId(selectId) {
+  return `${selectId}_outro`;
+}
+
+function toggleOutroInput(select) {
+  const input = $(getOutroInputId(select.id));
+  if (!input) return;
+
+  const show = isOutroText(getSelectedOptionText(select));
+  input.classList.toggle("hidden", !show);
+  if (show) {
+    input.disabled = select.disabled;
+  } else {
+    input.value = "";
+    input.disabled = true;
+  }
+}
+
+function bindOutroSelects() {
+  OUTRO_SELECT_IDS.forEach((selectId) => {
+    const select = $(selectId);
+    if (!select || !findOutroOption(select) || $(getOutroInputId(selectId))) return;
+
+    const input = document.createElement("input");
+    input.id = getOutroInputId(selectId);
+    input.placeholder = "Digite a opção";
+    input.className = "hidden mt-2 border p-3 rounded w-full";
+    input.autocomplete = "off";
+
+    select.insertAdjacentElement("afterend", input);
+    select.addEventListener("change", () => toggleOutroInput(select));
+    toggleOutroInput(select);
+  });
+}
+
+function setSelectValueWithOutro(selectId, valor) {
+  const select = $(selectId);
+  if (!select) return;
+
+  const input = $(getOutroInputId(selectId));
+  const value = String(valor || "");
+  const matchingOption = Array.from(select.options).find((option) => option.value === value || option.textContent.trim() === value);
+
+  if (!value) {
+    select.value = "";
+    if (input) input.value = "";
+    toggleOutroInput(select);
+    return;
+  }
+
+  if (matchingOption) {
+    select.value = matchingOption.value;
+    if (input) input.value = "";
+    toggleOutroInput(select);
+    return;
+  }
+
+  const outroOption = findOutroOption(select);
+  if (outroOption) {
+    select.value = outroOption.value;
+    if (input) input.value = value;
+    toggleOutroInput(select);
+  }
+}
+
+function getSelectValueWithOutro(selectId) {
+  const select = $(selectId);
+  if (!select) return "";
+
+  const selectedText = getSelectedOptionText(select);
+  if (!isOutroText(selectedText)) return select.value || "";
+
+  const manual = ($(getOutroInputId(selectId))?.value || "").trim();
+  return manual || selectedText;
+}
+
 function setReadOnly(isReadOnly) {
   // trava inputs/textarea/select/file, mas não trava botões de navegação
   const inputs = document.querySelectorAll("input, textarea, select");
@@ -41,16 +157,21 @@ function setReadOnly(isReadOnly) {
     el.classList.toggle("bg-slate-100", isReadOnly);
   });
 
+  OUTRO_SELECT_IDS.forEach((selectId) => {
+    const select = $(selectId);
+    if (select) toggleOutroInput(select);
+  });
+
   // esconde botões salvar/finalizar em modo leitura
   const btnSalvar = $("btnSalvar");
   const btnFinal = $("btnFinalizarPneu");
-  if (btnSalvar) btnSalvar.style.display = isReadOnly ? "none" : "inline-block";
-  if (btnFinal) btnFinal.style.display = isReadOnly ? "none" : "inline-block";
+  if (btnSalvar) btnSalvar.style.display = isReadOnly ? "none" : "";
+  if (btnFinal) btnFinal.style.display = isReadOnly ? "none" : "";
 }
 
-function setHeader({ numero, status, mesNome }) {
+function setHeader({ numero, status, mesNome, mesStatus }) {
   $("tituloPneu").textContent = `Pneu #${numero || "—"}`;
-  $("subtituloPneu").textContent = `Mês: ${mesNome || "—"} • Status: ${status || "—"}`;
+  $("subtituloPneu").textContent = `Mês: ${mesNome || "—"} • Status do mês: ${mesStatus || "—"} • Status do pneu: ${status || "—"}`;
 }
 
 /* =========================
@@ -104,11 +225,11 @@ let urlsFotosExistentes = [];   // string[] (download URLs)
 ========================= */
 function criarThumb(src) {
   const wrap = document.createElement("div");
-  wrap.className = "bg-slate-50 border rounded-xl overflow-hidden";
+  wrap.className = "photo-card";
 
   const img = document.createElement("img");
   img.src = src;
-  img.className = "w-full h-28 object-cover cursor-pointer hover:opacity-80";
+  img.className = "photo-thumb";
   img.addEventListener("click", () => window.abrirImagem(src));
 
   wrap.appendChild(img);
@@ -140,8 +261,22 @@ function bindFotosInput() {
   input.addEventListener("change", () => {
     const files = Array.from(input.files || []);
 
-    if (files.length > 4) {
-      alert("Selecione no máximo 4 imagens.");
+    if (urlsFotosExistentes.length + files.length > MAX_FOTOS) {
+      alert(`O pneu pode ter no máximo ${MAX_FOTOS} fotos no total.`);
+      input.value = "";
+      return;
+    }
+
+    const arquivoInvalido = files.find((file) => !file.type.startsWith("image/"));
+    if (arquivoInvalido) {
+      alert("Selecione apenas arquivos de imagem.");
+      input.value = "";
+      return;
+    }
+
+    const arquivoGrande = files.find((file) => file.size > MAX_FOTO_MB * 1024 * 1024);
+    if (arquivoGrande) {
+      alert(`Cada foto deve ter no máximo ${MAX_FOTO_MB} MB.`);
       input.value = "";
       return;
     }
@@ -157,14 +292,15 @@ function bindFotosInput() {
 async function uploadFotos(mesId, pneuId) {
   if (!fotosSelecionadas.length) return [];
 
-  const files = fotosSelecionadas.slice(0, 4);
+  const files = fotosSelecionadas.slice(0, MAX_FOTOS);
 
   const uploads = files.map(async (file, idx) => {
-    const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+    const extArquivo = (file.name.split(".").pop() || "jpg").toLowerCase();
+    const ext = /^[a-z0-9]+$/.test(extArquivo) ? extArquivo : "jpg";
     const path = `pneus/${mesId}/${pneuId}/${Date.now()}_${idx}.${ext}`;
     const ref = storageRef(storage, path);
 
-    await uploadBytes(ref, file);
+    await uploadBytes(ref, file, { contentType: file.type });
     return await getDownloadURL(ref);
   });
 
@@ -174,12 +310,12 @@ async function uploadFotos(mesId, pneuId) {
 /* =========================
    Carregar mês (nome)
 ========================= */
-async function carregarMesNome(mesId) {
+async function carregarMesInfo(mesId) {
   try {
     const mesRef = doc(db, "meses", mesId);
     const snap = await getDoc(mesRef);
     if (!snap.exists()) return null;
-    return snap.data().nome || null;
+    return snap.data();
   } catch {
     return null;
   }
@@ -197,36 +333,41 @@ async function carregarPneu() {
     return;
   }
 
-  const mesNome = await carregarMesNome(mesId);
+  const mes = await carregarMesInfo(mesId);
+
+  if (!mes) {
+    alert("Mês não encontrado. Volte e selecione novamente.");
+    window.location.href = "./app.html";
+    return;
+  }
+
+  const mesNome = mes.nome || null;
+  const mesStatus = mes.status || "em_andamento";
+  const mesFinalizado = mesStatus === "finalizado";
 
   const refDoc = pneuDocRef(mesId, pneuId);
   const snap = await getDoc(refDoc);
 
   if (!snap.exists()) {
-    // cria doc mínimo se ainda não existir
-    await setDoc(refDoc, {
-      status: "em_andamento",
-      criadoEm: serverTimestamp(),
-      atualizadoEm: serverTimestamp()
-    }, { merge: true });
-
-    setHeader({ numero: "—", status: "em_andamento", mesNome });
-    modoLeitura = false;
-    setReadOnly(false);
+    alert("Pneu não encontrado. Volte e selecione novamente.");
+    window.location.href = "./mes.html";
     return;
   }
 
   const p = snap.data();
+  const onde = dadosOnde(p);
+  const info = dadosInfo(p);
 
   // header
   setHeader({
     numero: p.numero || "—",
     status: p.status || "—",
-    mesNome
+    mesNome,
+    mesStatus
   });
 
   // modo leitura
-  modoLeitura = (p.status === "finalizado");
+  modoLeitura = mesFinalizado || (p.status === "finalizado");
   setReadOnly(modoLeitura);
 
   // planejamento
@@ -238,25 +379,25 @@ async function carregarPneu() {
   if ($("f_fim")) $("f_fim").value = p.quando?.fim || "";
 
   // onde
-  if ($("f_nome")) $("f_nome").value = p.onde?.nome || "";
-  if ($("f_razao")) $("f_razao").value = p.onde?.razao || "";
-  if ($("f_endereco")) $("f_endereco").value = p.onde?.endereco || "";
+  if ($("f_nome")) $("f_nome").value = onde.nome;
+  if ($("f_razao")) $("f_razao").value = onde.razao;
+  if ($("f_endereco")) $("f_endereco").value = onde.endereco;
 
   // caracteristicas (se existir no HTML)
-  if ($("c_marca")) $("c_marca").value = p.caracteristicas?.marca || "";
-  if ($("c_medida")) $("c_medida").value = p.caracteristicas?.medida || "";
+  setSelectValueWithOutro("c_marca", p.caracteristicas?.marca || "");
+  setSelectValueWithOutro("c_medida", p.caracteristicas?.medida || "");
   if ($("c_desenho")) $("c_desenho").value = p.caracteristicas?.desenho || "";
   if ($("c_profundidade")) $("c_profundidade").value = p.caracteristicas?.profundidade || "";
-  if ($("c_vida")) $("c_vida").value = p.caracteristicas?.vida || "";
+  setSelectValueWithOutro("c_vida", p.caracteristicas?.vida || "");
 
   // informações (se existir no HTML)
-  if ($("i_dot")) $("i_dot").value = p.info?.dot || "";
-  if ($("i_fogo")) $("i_fogo").value = p.info?.fogo || "";
-  if ($("i_cliente")) $("i_cliente").value = p.info?.cliente || "";
-  if ($("i_data")) $("i_data").value = p.info?.data || "";
-  if ($("i_mesRef")) $("i_mesRef").value = p.info?.mesReferencia || "";
-  if ($("i_avaria")) $("i_avaria").value = p.info?.avaria || "";
-  if ($("i_causa")) $("i_causa").value = p.info?.causa || "";
+  if ($("i_dot")) $("i_dot").value = info.dot;
+  if ($("i_fogo")) $("i_fogo").value = info.fogo;
+  if ($("i_cliente")) $("i_cliente").value = info.cliente;
+  if ($("i_data")) $("i_data").value = info.data;
+  if ($("i_mesRef")) $("i_mesRef").value = info.mesReferencia;
+  if ($("i_avaria")) $("i_avaria").value = info.avaria;
+  if ($("i_causa")) $("i_causa").value = info.causa;
 
   // fotos
   urlsFotosExistentes = Array.isArray(p.fotos) ? p.fotos : [];
@@ -266,10 +407,10 @@ async function carregarPneu() {
 /* =========================
    Salvar
 ========================= */
-window.salvarFormulario = async function () {
+window.salvarFormulario = async function ({ silencioso = false } = {}) {
   if (modoLeitura) {
     alert("Este pneu está finalizado e não pode ser editado.");
-    return;
+    return false;
   }
 
   const mesId = getMesId();
@@ -277,11 +418,30 @@ window.salvarFormulario = async function () {
 
   if (!mesId || !pneuId) {
     alert("Mês ou pneu não identificado.");
-    return;
+    return false;
   }
 
   try {
+    const mes = await carregarMesInfo(mesId);
+    if (!mes || (mes.status || "em_andamento") === "finalizado") {
+      modoLeitura = true;
+      setReadOnly(true);
+      alert("Mês finalizado. Não é possível editar este pneu.");
+      return false;
+    }
+
     const refDoc = pneuDocRef(mesId, pneuId);
+    const snap = await getDoc(refDoc);
+
+    if (!snap.exists()) {
+      alert("Pneu não encontrado.");
+      return false;
+    }
+
+    if (urlsFotosExistentes.length + fotosSelecionadas.length > MAX_FOTOS) {
+      alert(`O pneu pode ter no máximo ${MAX_FOTOS} fotos no total.`);
+      return false;
+    }
 
     // upload de fotos novas
     const novasUrls = await uploadFotos(mesId, pneuId);
@@ -301,11 +461,11 @@ window.salvarFormulario = async function () {
         endereco: ($("f_endereco")?.value || "").trim()
       },
       caracteristicas: {
-        marca: $("c_marca")?.value || "",
-        medida: $("c_medida")?.value || "",
+        marca: getSelectValueWithOutro("c_marca"),
+        medida: getSelectValueWithOutro("c_medida"),
         desenho: $("c_desenho")?.value || "",
         profundidade: $("c_profundidade")?.value || "",
-        vida: $("c_vida")?.value || ""
+        vida: getSelectValueWithOutro("c_vida")
       },
       info: {
         dot: ($("i_dot")?.value || "").trim(),
@@ -321,7 +481,7 @@ window.salvarFormulario = async function () {
 
     // concatena fotos antigas + novas (limite 4)
     if (novasUrls.length) {
-      dados.fotos = [...urlsFotosExistentes, ...novasUrls].slice(0, 4);
+      dados.fotos = [...urlsFotosExistentes, ...novasUrls].slice(0, MAX_FOTOS);
     }
 
     await updateDoc(refDoc, dados);
@@ -335,12 +495,14 @@ window.salvarFormulario = async function () {
       renderPreviewFotos();
     }
 
-    alert("Salvo com sucesso!");
+    if (!silencioso) alert("Salvo com sucesso!");
     await carregarPneu();
+    return true;
 
   } catch (e) {
     console.error("Erro ao salvar:", e);
     alert("Erro ao salvar. Veja o console (F12).");
+    return false;
   }
 };
 
@@ -365,7 +527,8 @@ window.finalizarPneu = async function () {
     const refDoc = pneuDocRef(mesId, pneuId);
 
     // salva antes de finalizar
-    await window.salvarFormulario();
+    const salvo = await window.salvarFormulario({ silencioso: true });
+    if (!salvo) return;
 
     await updateDoc(refDoc, {
       status: "finalizado",
@@ -395,7 +558,15 @@ window.voltarMes = function () {
 /* =========================
    Init
 ========================= */
-document.addEventListener("DOMContentLoaded", () => {
+function iniciarFormularioPneu() {
+  bindOutroSelects();
   bindFotosInput();
   carregarPneu();
-});
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", iniciarFormularioPneu, { once: true });
+} else {
+  iniciarFormularioPneu();
+}
+
