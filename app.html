@@ -3,68 +3,77 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Meses</title>
+  <title>Controle de Pneus - Meses</title>
   <script src="https://cdn.tailwindcss.com"></script>
-
-  <style>
-    .card{ background:white; border-radius:16px; box-shadow:0 6px 18px rgba(0,0,0,.06); }
-  </style>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+  <link rel="stylesheet" href="./css/opcao1.css?v=20260531-1">
 </head>
 
-<body class="bg-slate-100">
-
-  <script type="module" src="./js/authGuard.js"></script>
-
-  <header class="bg-white p-4 shadow grid grid-cols-3 items-center">
-  
-  <!-- ESQUERDA -->
-  <div>
-    <h1 class="font-bold text-xl">
-      Controle de Pneus - Meses
-    </h1>
-  </div>
-
-  <!-- CENTRO (LOGO) -->
-  <div class="flex justify-center">
-    <img
-      src="suzano-logo.png"
-      class="h-6 md:h-10 object-contain"
-      alt="Logo"
-    >
-  </div>
-
-  <!-- DIREITA -->
-  <div class="flex justify-end">
-    <button onclick="logout()"
-      class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded">
-      Sair
-    </button>
-  </div>
-
-</header>
-
-
-  <main class="p-6">
-    <button onclick="abrirModalMes()"
-      class="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-xl font-semibold mb-6 w-full md:w-auto">
-      + Criar Mês
-    </button>
-
-    <div id="gridMeses" class="grid md:grid-cols-3 gap-6"></div>
-  </main>
-
-  <!-- MODAL CRIAR MÊS (SELECTS) -->
-  <div id="modalMes" class="hidden fixed inset-0 bg-black/50 flex items-end md:items-center justify-center p-0 md:p-4">
-    <div class="card w-full md:max-w-md p-5 md:p-6 rounded-t-2xl md:rounded-2xl">
-      <div class="flex justify-between items-center mb-4">
-        <h2 class="text-lg font-bold">Criar mês</h2>
-        <button onclick="fecharModalMes()" class="text-slate-500 hover:text-slate-700 text-2xl leading-none">&times;</button>
+<body class="app-body">
+  <header class="app-topbar">
+    <div class="app-topbar-inner">
+      <div class="app-brand">
+        <div class="app-brand-mark">
+          <img src="suzano-logo.png" alt="Suzano">
+        </div>
+        <div>
+          <h1>Controle de Pneus</h1>
+          <p>Meses de avaliação e acompanhamento</p>
+        </div>
       </div>
 
-      <div class="grid grid-cols-2 gap-3">
+      <div class="app-actions">
+        <button class="app-btn danger" type="button" onclick="logout()">
+          <i data-lucide="log-out"></i>
+          Sair
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <div class="app-layout">
+    <aside class="app-sidebar" aria-label="Navegação principal">
+      <a class="side-link active" href="app.html">
+        <i data-lucide="calendar-days"></i>
+        Meses
+      </a>
+      <button class="side-link danger" type="button" onclick="logout()">
+        <i data-lucide="log-out"></i>
+        Sair
+      </button>
+    </aside>
+
+    <main class="app-main">
+      <section class="page-heading" aria-label="Resumo dos meses">
         <div>
-          <label class="block text-sm text-slate-600 mb-2">Mês</label>
-          <select id="selMes" class="w-full border p-3 rounded-xl">
+          <p class="page-kicker">Operação</p>
+          <h2>Meses de controle</h2>
+          <p>Crie meses e acompanhe os pneus cadastrados.</p>
+        </div>
+
+        <button class="app-btn primary" type="button" onclick="abrirModalMes()">
+          <i data-lucide="plus"></i>
+          Criar mês
+        </button>
+      </section>
+
+      <div id="gridMeses" class="cards-grid"></div>
+    </main>
+  </div>
+
+  <div id="modalMes" class="app-modal hidden">
+    <div class="modal-card">
+      <div class="modal-head">
+        <h2>Criar mês</h2>
+        <button class="close-btn" type="button" onclick="fecharModalMes()" aria-label="Fechar">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+
+      <div class="form-grid">
+        <div class="span-3">
+          <label for="selMes">Mês</label>
+          <select id="selMes">
             <option value="1">Janeiro</option>
             <option value="2">Fevereiro</option>
             <option value="3">Março</option>
@@ -80,29 +89,27 @@
           </select>
         </div>
 
-        <div>
-          <label class="block text-sm text-slate-600 mb-2">Ano</label>
-          <select id="selAno" class="w-full border p-3 rounded-xl"></select>
+        <div class="span-3">
+          <label for="selAno">Ano</label>
+          <select id="selAno"></select>
         </div>
       </div>
 
-      <div class="flex gap-2 mt-6">
-        <button onclick="fecharModalMes()"
-          class="flex-1 bg-slate-200 hover:bg-slate-300 px-4 py-3 rounded-xl">
-          Cancelar
-        </button>
-
-        <button onclick="confirmarCriarMes()"
-          class="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-xl font-semibold">
+      <div class="card-actions">
+        <button class="app-btn subtle" type="button" onclick="fecharModalMes()">Cancelar</button>
+        <button class="app-btn blue" type="button" onclick="confirmarCriarMes()">
+          <i data-lucide="check"></i>
           Criar
         </button>
       </div>
     </div>
   </div>
 
-  <script type="module" src="./js/firebase.js"></script>
-  <script type="module" src="./js/meses.js"></script>
-  <script type="module" src="./js/authGuard.js"></script>
-
+  <script type="module" src="./js/meses.js?v=20260531-3"></script>
+  <script>
+    window.addEventListener("DOMContentLoaded", () => {
+      if (window.lucide) window.lucide.createIcons();
+    });
+  </script>
 </body>
 </html>

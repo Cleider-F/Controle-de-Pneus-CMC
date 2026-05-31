@@ -1,59 +1,78 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Pneus do Mês</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+  <link rel="stylesheet" href="./css/opcao1.css?v=20260531-1">
 </head>
 
-<body class="bg-slate-100 min-h-screen">
-  <script type="module" src="./js/authGuard.js"></script>
+<body class="app-body">
+  <header class="app-topbar">
+    <div class="app-topbar-inner">
+      <div class="app-brand">
+        <div class="app-brand-mark">
+          <img src="suzano-logo.png" alt="Suzano">
+        </div>
+        <div>
+          <h1>Controle de Pneus</h1>
+          <p>Lista de pneus do mês selecionado</p>
+        </div>
+      </div>
 
-  <header class="bg-white shadow p-4 flex items-center justify-between">
-    <div>
-      <h1 class="text-xl font-bold">Pneus do Mês</h1>
-      <p id="mesTitulo" class="text-sm text-slate-500">Carregando...</p>
-    </div>
-
- <!-- CENTRO (LOGO) -->
-  <div class="flex justify-center">
-    <img
-      src="suzano-logo.png"
-      class="h-6 md:h-10 object-contain"
-      alt="Logo"
-    >
-  </div>
-
-    <div class="flex gap-2 flex-wrap justify-end">
-      <button onclick="voltarMeses()"
-        class="px-4 py-2 rounded bg-slate-200 hover:bg-slate-300">
-        Voltar
-      </button>
-
-      <button id="btnFinalizarMes" onclick="finalizarMes()"
-        class="px-4 py-2 rounded bg-red-600 text-white hover:bg-red-700">
-        Finalizar mês
-      </button>
-
-      <button onclick="exportarCSV()"
-        class="px-4 py-2 rounded bg-slate-800 text-white hover:bg-slate-900">
-        Exportar CSV
-      </button>
-
-      <button id="btnNovoPneu" onclick="criarPneuUI()"
-        class="px-4 py-2 rounded bg-green-600 text-white hover:bg-green-700">
-        + Novo Pneu
-      </button>
+      <div class="app-actions">
+        <button class="app-btn subtle" type="button" onclick="voltarMeses()">
+          <i data-lucide="arrow-left"></i>
+          Voltar
+        </button>
+        <button id="btnFinalizarMes" class="app-btn danger" type="button" onclick="finalizarMes()">
+          <i data-lucide="lock"></i>
+          Finalizar mês
+        </button>
+        <button class="app-btn dark" type="button" onclick="exportarCSV()">
+          <i data-lucide="download"></i>
+          Exportar CSV
+        </button>
+        <button id="btnNovoPneu" class="app-btn primary" type="button" onclick="criarPneuUI()">
+          <i data-lucide="plus"></i>
+          Novo pneu
+        </button>
+      </div>
     </div>
   </header>
 
-  <main class="p-6">
-    <div id="gridPneus" class="grid md:grid-cols-3 gap-6"></div>
-  </main>
-  
-  <script type="module" src="./js/authGuard.js"></script>
-  <script type="module" src="./js/firebase.js"></script>
-  <script type="module" src="./js/pneus.js"></script>
+  <div class="app-layout">
+    <aside class="app-sidebar" aria-label="Navegação principal">
+      <a class="side-link" href="app.html">
+        <i data-lucide="calendar-days"></i>
+        Meses
+      </a>
+      <button class="side-link active" type="button">
+        <i data-lucide="clipboard-list"></i>
+        Pneus
+      </button>
+    </aside>
+
+    <main class="app-main">
+      <section class="page-heading" aria-label="Resumo do mês">
+        <div>
+          <p class="page-kicker">Mês selecionado</p>
+          <h2>Pneus do mês</h2>
+          <p id="mesTitulo">Carregando...</p>
+        </div>
+      </section>
+
+      <div id="gridPneus" class="cards-grid"></div>
+    </main>
+  </div>
+
+  <script type="module" src="./js/pneus.js?v=20260531-7"></script>
+  <script>
+    window.addEventListener("DOMContentLoaded", () => {
+      if (window.lucide) window.lucide.createIcons();
+    });
+  </script>
 </body>
 </html>

@@ -1,0 +1,1566 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Preview de Layouts - Controle de Pneus</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+  <style>
+    :root {
+      --ink: #172033;
+      --muted: #64748b;
+      --line: #d8dee9;
+      --paper: #f6f8fb;
+      --panel: #ffffff;
+      --green: #0f8b6d;
+      --blue: #2563eb;
+      --orange: #d97706;
+      --dark: #10151f;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      background:
+        linear-gradient(180deg, #eef3f8 0, #f7f9fc 320px, #f6f8fb 100%);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      overflow-x: hidden;
+    }
+
+    button,
+    a {
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .page-shell {
+      width: min(1380px, calc(100% - 32px));
+      margin: 0 auto;
+    }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      border-bottom: 1px solid rgba(148, 163, 184, .28);
+      background: rgba(246, 248, 251, .92);
+      backdrop-filter: blur(16px);
+    }
+
+    .topbar-inner {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 16px;
+      min-height: 76px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      min-width: 0;
+      gap: 14px;
+    }
+
+    .brand-mark {
+      display: grid;
+      place-items: center;
+      width: 54px;
+      height: 54px;
+      border: 1px solid rgba(15, 139, 109, .22);
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    .brand-mark img {
+      width: 42px;
+      max-height: 36px;
+      object-fit: contain;
+    }
+
+    .brand-title {
+      min-width: 0;
+    }
+
+    .brand-title h1 {
+      margin: 0;
+      font-size: 1.15rem;
+      line-height: 1.2;
+      font-weight: 800;
+      letter-spacing: 0;
+    }
+
+    .brand-title p {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: .88rem;
+    }
+
+    .top-actions {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .icon-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 40px;
+      gap: 8px;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      padding: 9px 12px;
+      color: #243149;
+      background: #fff;
+      font-size: .9rem;
+      font-weight: 700;
+      text-decoration: none;
+      min-width: 0;
+      text-align: center;
+      transition: transform .18s ease, border-color .18s ease, background .18s ease;
+    }
+
+    .icon-button:hover {
+      transform: translateY(-1px);
+      border-color: #94a3b8;
+      background: #f8fafc;
+    }
+
+    .icon-button.primary {
+      border-color: transparent;
+      color: #fff;
+      background: #0f8b6d;
+    }
+
+    .icon-button.primary:hover {
+      background: #0a755d;
+    }
+
+    .icon-button svg {
+      width: 17px;
+      height: 17px;
+      flex: 0 0 auto;
+    }
+
+    .intro {
+      display: grid;
+      grid-template-columns: minmax(0, 1.05fr) minmax(280px, .95fr);
+      gap: 24px;
+      padding: 28px 0 18px;
+      align-items: end;
+    }
+
+    .intro-copy h2 {
+      margin: 0;
+      max-width: 760px;
+      font-size: clamp(2rem, 4vw, 4.2rem);
+      line-height: .98;
+      font-weight: 850;
+      letter-spacing: 0;
+    }
+
+    .intro-copy p {
+      margin: 14px 0 0;
+      max-width: 680px;
+      color: #526174;
+      font-size: 1rem;
+      line-height: 1.65;
+    }
+
+    .selection-panel {
+      border: 1px solid #d4dce8;
+      border-radius: 8px;
+      background: #fff;
+      padding: 14px;
+    }
+
+    .selection-panel strong {
+      display: block;
+      font-size: .8rem;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+    }
+
+    .selection-panel span {
+      display: block;
+      margin-top: 4px;
+      font-size: 1.25rem;
+      font-weight: 800;
+      color: #132033;
+    }
+
+    .quick-nav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 8px 0 20px;
+    }
+
+    .quick-nav a {
+      border: 1px solid #d4dce8;
+      border-radius: 999px;
+      padding: 8px 13px;
+      color: #334155;
+      background: #fff;
+      font-size: .86rem;
+      font-weight: 750;
+      text-decoration: none;
+    }
+
+    .option {
+      position: relative;
+      display: grid;
+      grid-template-columns: minmax(230px, 300px) minmax(0, 1fr);
+      gap: 22px;
+      padding: 32px 0;
+      border-top: 1px solid #d8dee9;
+    }
+
+    .option:first-of-type {
+      border-top: 0;
+    }
+
+    .option-meta {
+      position: sticky;
+      top: 96px;
+      align-self: start;
+    }
+
+    .option-kicker {
+      color: #64748b;
+      font-size: .78rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+    }
+
+    .option h3 {
+      margin: 8px 0 8px;
+      font-size: 1.45rem;
+      line-height: 1.15;
+      font-weight: 850;
+      letter-spacing: 0;
+    }
+
+    .option p {
+      margin: 0;
+      color: #526174;
+      line-height: 1.55;
+      font-size: .94rem;
+    }
+
+    .tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+      margin: 16px 0;
+    }
+
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      border: 1px solid #d4dce8;
+      border-radius: 999px;
+      padding: 5px 9px;
+      color: #334155;
+      background: #fff;
+      font-size: .77rem;
+      font-weight: 750;
+    }
+
+    .select-layout {
+      width: 100%;
+      border: 0;
+      border-radius: 8px;
+      padding: 12px 14px;
+      color: #fff;
+      background: #172033;
+      font-weight: 800;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .select-layout svg {
+      width: 17px;
+      height: 17px;
+    }
+
+    .option.selected .select-layout {
+      background: #0f8b6d;
+    }
+
+    .option.selected::before {
+      content: "";
+      position: absolute;
+      left: -14px;
+      top: 32px;
+      width: 5px;
+      height: 52px;
+      border-radius: 999px;
+      background: #0f8b6d;
+    }
+
+    .preview-frame {
+      overflow: hidden;
+      border: 1px solid #cfd7e4;
+      border-radius: 8px;
+      background: #fff;
+      box-shadow: 0 18px 45px rgba(15, 23, 42, .08);
+      min-width: 0;
+    }
+
+    .mock-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      min-height: 58px;
+      border-bottom: 1px solid rgba(148, 163, 184, .32);
+      padding: 12px 16px;
+    }
+
+    .mock-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+      font-weight: 850;
+      color: #132033;
+    }
+
+    .mock-logo img {
+      width: 30px;
+      height: 30px;
+      object-fit: contain;
+    }
+
+    .mock-logo span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .mock-actions {
+      display: flex;
+      gap: 7px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .mini-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 32px;
+      border: 1px solid rgba(148, 163, 184, .5);
+      border-radius: 8px;
+      padding: 7px 9px;
+      color: #243149;
+      background: #fff;
+      font-size: .76rem;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .mini-button.fill {
+      border-color: transparent;
+      color: #fff;
+      background: #0f8b6d;
+    }
+
+    .mock-shell {
+      min-height: 520px;
+    }
+
+    .field,
+    .select-field,
+    .textarea-field {
+      border: 1px solid #ccd5e1;
+      border-radius: 8px;
+      background: #fff;
+      color: #172033;
+      font-size: .82rem;
+    }
+
+    .field,
+    .select-field {
+      min-height: 38px;
+      padding: 10px 11px;
+    }
+
+    .textarea-field {
+      min-height: 78px;
+      padding: 11px;
+    }
+
+    .label {
+      display: block;
+      margin-bottom: 6px;
+      color: #65758b;
+      font-size: .72rem;
+      font-weight: 750;
+    }
+
+    .stat {
+      border: 1px solid #d8dee9;
+      border-radius: 8px;
+      padding: 12px;
+      background: #fff;
+    }
+
+    .stat span {
+      display: block;
+      color: #64748b;
+      font-size: .72rem;
+      font-weight: 750;
+    }
+
+    .stat strong {
+      display: block;
+      margin-top: 4px;
+      color: #172033;
+      font-size: 1.22rem;
+      line-height: 1;
+      font-weight: 850;
+    }
+
+    .layout-clean .mock-shell {
+      display: grid;
+      grid-template-columns: 196px minmax(0, 1fr);
+      background: #f7fafc;
+    }
+
+    .layout-clean .side {
+      border-right: 1px solid #d8dee9;
+      background: #fff;
+      padding: 16px 12px;
+    }
+
+    .side-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 38px;
+      border-radius: 8px;
+      padding: 9px 10px;
+      color: #53657a;
+      font-size: .84rem;
+      font-weight: 750;
+    }
+
+    .side-item.active {
+      color: #0f6f5a;
+      background: #e9f7f3;
+    }
+
+    .side-item svg {
+      width: 16px;
+      height: 16px;
+      flex: 0 0 auto;
+    }
+
+    .layout-clean .content {
+      padding: 18px;
+    }
+
+    .clean-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .clean-head h4 {
+      margin: 0;
+      font-size: 1.25rem;
+      font-weight: 850;
+    }
+
+    .clean-head p {
+      margin: 4px 0 0;
+      color: #65758b;
+      font-size: .82rem;
+    }
+
+    .stat-row {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .form-section {
+      border: 1px solid #d8dee9;
+      border-radius: 8px;
+      background: #fff;
+      padding: 14px;
+    }
+
+    .form-section h5 {
+      margin: 0 0 12px;
+      font-size: .92rem;
+      font-weight: 850;
+    }
+
+    .span-6 {
+      grid-column: span 6;
+    }
+
+    .span-3 {
+      grid-column: span 3;
+    }
+
+    .span-2 {
+      grid-column: span 2;
+    }
+
+    .layout-board .mock-shell {
+      background: #eef6f3;
+      padding: 16px;
+    }
+
+    .board-main {
+      display: grid;
+      grid-template-columns: minmax(0, 1.15fr) minmax(260px, .85fr);
+      gap: 14px;
+    }
+
+    .board-title {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .board-title h4 {
+      margin: 0;
+      font-size: 1.36rem;
+      font-weight: 850;
+      letter-spacing: 0;
+    }
+
+    .board-title p {
+      margin: 4px 0 0;
+      color: #596b7e;
+      font-size: .83rem;
+    }
+
+    .board-strip {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .board-strip .stat {
+      border-color: #c2d8cf;
+      background: #fff;
+    }
+
+    .board-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .list-row {
+      display: grid;
+      grid-template-columns: 36px minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 10px;
+      border: 1px solid #d3e2dc;
+      border-radius: 8px;
+      padding: 9px;
+      background: #fff;
+    }
+
+    .list-row .avatar {
+      display: grid;
+      place-items: center;
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      color: #0f6f5a;
+      background: #e3f3ee;
+      font-weight: 850;
+    }
+
+    .list-row strong {
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: .87rem;
+    }
+
+    .list-row span {
+      color: #64748b;
+      font-size: .76rem;
+    }
+
+    .status-pill {
+      border-radius: 999px;
+      padding: 5px 8px;
+      color: #0f6f5a;
+      background: #dff5ee;
+      font-size: .7rem;
+      font-weight: 850;
+      white-space: nowrap;
+    }
+
+    .board-side {
+      border: 1px solid #cbded6;
+      border-radius: 8px;
+      background: #fff;
+      padding: 14px;
+    }
+
+    .board-side h5 {
+      margin: 0 0 12px;
+      font-size: .95rem;
+      font-weight: 850;
+    }
+
+    .timeline {
+      display: grid;
+      gap: 12px;
+    }
+
+    .timeline-item {
+      display: grid;
+      grid-template-columns: 18px minmax(0, 1fr);
+      gap: 8px;
+      color: #526174;
+      font-size: .8rem;
+    }
+
+    .timeline-dot {
+      width: 10px;
+      height: 10px;
+      margin-top: 4px;
+      border-radius: 999px;
+      background: #0f8b6d;
+      box-shadow: 0 0 0 4px #dff5ee;
+    }
+
+    .layout-dark .mock-top {
+      border-color: rgba(148, 163, 184, .22);
+      background: #111827;
+    }
+
+    .layout-dark .mock-logo,
+    .layout-dark .mini-button {
+      color: #e5eef8;
+    }
+
+    .layout-dark .mini-button {
+      border-color: rgba(148, 163, 184, .22);
+      background: #172033;
+    }
+
+    .layout-dark .mini-button.fill {
+      color: #10151f;
+      background: #f2b84b;
+    }
+
+    .layout-dark .mock-shell {
+      display: grid;
+      grid-template-columns: minmax(230px, .75fr) minmax(0, 1.25fr);
+      gap: 0;
+      background: #10151f;
+      color: #dce8f5;
+    }
+
+    .dark-rail {
+      border-right: 1px solid rgba(148, 163, 184, .18);
+      padding: 18px;
+      background: #151d2a;
+    }
+
+    .dark-rail h4,
+    .dark-work h4 {
+      margin: 0;
+      color: #f8fafc;
+      font-size: 1.12rem;
+      font-weight: 850;
+    }
+
+    .dark-rail p,
+    .dark-work p {
+      margin: 6px 0 0;
+      color: #9fb0c5;
+      font-size: .82rem;
+      line-height: 1.5;
+    }
+
+    .gauge {
+      margin: 18px auto;
+      width: min(200px, 100%);
+      aspect-ratio: 1;
+      border: 22px solid #263347;
+      border-top-color: #f2b84b;
+      border-right-color: #19b99a;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background: #111827;
+    }
+
+    .gauge strong {
+      display: block;
+      color: #f8fafc;
+      font-size: 2rem;
+      line-height: 1;
+    }
+
+    .gauge span {
+      display: block;
+      margin-top: 4px;
+      color: #9fb0c5;
+      font-size: .72rem;
+      text-align: center;
+    }
+
+    .dark-metric {
+      display: grid;
+      grid-template-columns: 36px minmax(0, 1fr);
+      gap: 10px;
+      align-items: center;
+      border: 1px solid rgba(148, 163, 184, .18);
+      border-radius: 8px;
+      padding: 10px;
+      margin-top: 8px;
+      background: #101722;
+    }
+
+    .dark-metric svg {
+      width: 20px;
+      height: 20px;
+      color: #f2b84b;
+    }
+
+    .dark-metric span {
+      display: block;
+      color: #9fb0c5;
+      font-size: .72rem;
+    }
+
+    .dark-metric strong {
+      color: #eef5ff;
+      font-size: .95rem;
+    }
+
+    .dark-work {
+      padding: 18px;
+    }
+
+    .dark-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    .dark-panel {
+      border: 1px solid rgba(148, 163, 184, .18);
+      border-radius: 8px;
+      padding: 14px;
+      background: #151d2a;
+    }
+
+    .dark-panel.wide {
+      grid-column: span 2;
+    }
+
+    .dark-panel h5 {
+      margin: 0 0 10px;
+      color: #f8fafc;
+      font-size: .9rem;
+      font-weight: 850;
+    }
+
+    .check-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      min-height: 34px;
+      border-bottom: 1px solid rgba(148, 163, 184, .12);
+      color: #c9d7e7;
+      font-size: .8rem;
+    }
+
+    .check-row:last-child {
+      border-bottom: 0;
+    }
+
+    .check-row svg {
+      width: 17px;
+      height: 17px;
+      color: #19b99a;
+      flex: 0 0 auto;
+    }
+
+    .photo-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .photo-tile {
+      aspect-ratio: 1;
+      border: 1px dashed rgba(148, 163, 184, .38);
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      color: #9fb0c5;
+      background: #101722;
+    }
+
+    .photo-tile svg {
+      width: 22px;
+      height: 22px;
+    }
+
+    .layout-mobile .mock-shell {
+      display: grid;
+      grid-template-columns: minmax(240px, .72fr) minmax(0, 1.28fr);
+      gap: 18px;
+      padding: 18px;
+      background: #f5f7fb;
+    }
+
+    .phone {
+      width: min(290px, 100%);
+      min-height: 514px;
+      margin: 0 auto;
+      border: 8px solid #172033;
+      border-radius: 28px;
+      background: #fff;
+      overflow: hidden;
+      box-shadow: 0 18px 35px rgba(15, 23, 42, .18);
+    }
+
+    .phone-top {
+      padding: 18px 14px 12px;
+      color: #fff;
+      background: #0f8b6d;
+    }
+
+    .phone-top .mock-logo {
+      color: #fff;
+      margin-bottom: 14px;
+    }
+
+    .phone-top h4 {
+      margin: 0;
+      font-size: 1.35rem;
+      font-weight: 850;
+    }
+
+    .phone-top p {
+      margin: 5px 0 0;
+      color: rgba(255, 255, 255, .82);
+      font-size: .78rem;
+    }
+
+    .phone-body {
+      padding: 14px;
+    }
+
+    .phone-card {
+      border: 1px solid #d8dee9;
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 10px;
+      background: #fff;
+    }
+
+    .phone-card strong {
+      display: block;
+      font-size: .9rem;
+    }
+
+    .phone-card span {
+      color: #64748b;
+      font-size: .74rem;
+    }
+
+    .bottom-nav {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      border-top: 1px solid #d8dee9;
+      background: #fff;
+    }
+
+    .bottom-nav div {
+      display: grid;
+      place-items: center;
+      min-height: 56px;
+      color: #64748b;
+    }
+
+    .bottom-nav div.active {
+      color: #0f8b6d;
+    }
+
+    .bottom-nav svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    .mobile-detail {
+      align-self: center;
+    }
+
+    .mobile-detail h4 {
+      margin: 0 0 6px;
+      font-size: 1.4rem;
+      font-weight: 850;
+    }
+
+    .mobile-detail p {
+      margin: 0 0 16px;
+      color: #526174;
+      line-height: 1.55;
+    }
+
+    .mobile-list {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .mobile-action {
+      min-height: 86px;
+      border: 1px solid #d8dee9;
+      border-radius: 8px;
+      padding: 12px;
+      background: #fff;
+    }
+
+    .mobile-action svg {
+      width: 22px;
+      height: 22px;
+      color: #0f8b6d;
+    }
+
+    .mobile-action strong {
+      display: block;
+      margin-top: 8px;
+      font-size: .88rem;
+    }
+
+    .mobile-action span {
+      color: #64748b;
+      font-size: .74rem;
+    }
+
+    .footer-note {
+      border-top: 1px solid #d8dee9;
+      padding: 28px 0 40px;
+      color: #64748b;
+      font-size: .9rem;
+      line-height: 1.55;
+    }
+
+    @media (max-width: 1100px) {
+      .option,
+      .intro {
+        grid-template-columns: 1fr;
+      }
+
+      .option-meta {
+        position: static;
+      }
+
+      .layout-clean .mock-shell,
+      .layout-dark .mock-shell,
+      .layout-mobile .mock-shell,
+      .board-main {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 760px) {
+      .page-shell {
+        width: 100%;
+        padding-left: 10px;
+        padding-right: 10px;
+      }
+
+      .topbar-inner {
+        grid-template-columns: 1fr;
+        padding: 10px 0;
+      }
+
+      .top-actions {
+        display: grid;
+        grid-template-columns: 1fr;
+        width: 100%;
+      }
+
+      .top-actions .icon-button {
+        width: 100%;
+        padding-left: 10px;
+        padding-right: 10px;
+      }
+
+      .top-actions .icon-button.primary {
+        grid-column: auto;
+      }
+
+      .intro {
+        padding-top: 22px;
+      }
+
+      .intro-copy,
+      .intro-copy h2,
+      .intro-copy p,
+      .selection-panel,
+      .quick-nav,
+      .option-meta,
+      .preview-frame {
+        max-width: calc(100vw - 20px);
+      }
+
+      .intro-copy h2 {
+        font-size: 1.55rem;
+        line-height: 1.05;
+        overflow-wrap: anywhere;
+      }
+
+      .intro-copy h2 span {
+        display: block;
+      }
+
+      .intro-copy p,
+      .option p {
+        max-width: calc(100vw - 44px);
+        overflow-wrap: break-word;
+      }
+
+      .layout-clean .side {
+        display: none;
+      }
+
+      .mock-top,
+      .clean-head,
+      .board-title {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      .mock-actions {
+        justify-content: stretch;
+        width: 100%;
+      }
+
+      .mini-button {
+        flex: 1 1 100px;
+      }
+
+      .stat-row,
+      .board-strip,
+      .dark-grid,
+      .mobile-list {
+        grid-template-columns: 1fr;
+      }
+
+      .span-6,
+      .span-3,
+      .span-2,
+      .dark-panel.wide {
+        grid-column: span 1;
+      }
+
+      .form-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .photo-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .list-row {
+        grid-template-columns: 34px minmax(0, 1fr);
+      }
+
+      .list-row .status-pill {
+        grid-column: 2;
+        width: fit-content;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .intro-copy h2 {
+        max-width: 340px;
+      }
+
+      .intro-copy p,
+      .option p {
+        max-width: 320px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="page-shell topbar-inner">
+      <div class="brand">
+        <div class="brand-mark">
+          <img src="suzano-logo.png" alt="Suzano">
+        </div>
+        <div class="brand-title">
+          <h1>Controle de Pneus</h1>
+          <p>Preview de layouts para a próxima versão visual</p>
+        </div>
+      </div>
+
+      <nav class="top-actions" aria-label="Atalhos">
+        <a class="icon-button" href="index.html">
+          <i data-lucide="log-in"></i>
+          Login atual
+        </a>
+        <a class="icon-button" href="pneu.html">
+          <i data-lucide="file-input"></i>
+          Formulário atual
+        </a>
+        <a class="icon-button primary" href="#opcao-1">
+          <i data-lucide="layout-dashboard"></i>
+          Ver opções
+        </a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="page-shell">
+    <section class="intro" aria-label="Resumo">
+      <div class="intro-copy">
+        <h2><span>Quatro caminhos visuais</span> <span>para modernizar o sistema.</span></h2>
+        <p>Cada opção usa os mesmos fluxos do Controle de Pneus, com focos diferentes: operação diária, painel compacto, inspeção técnica e uso em celular.</p>
+      </div>
+
+      <aside class="selection-panel" aria-live="polite">
+        <strong>Layout selecionado</strong>
+        <span id="selectedText">Nenhum ainda</span>
+      </aside>
+    </section>
+
+    <nav class="quick-nav" aria-label="Opções de layout">
+      <a href="#opcao-1">01 Operação limpa</a>
+      <a href="#opcao-2">02 Painel compacto</a>
+      <a href="#opcao-3">03 Oficina escura</a>
+      <a href="#opcao-4">04 Mobile primeiro</a>
+    </nav>
+
+    <section class="option" id="opcao-1" data-layout-name="Opção 1: Operação limpa">
+      <aside class="option-meta">
+        <div class="option-kicker">Opção 01</div>
+        <h3>Operação limpa</h3>
+        <p>Visual claro, organizado por menu lateral e blocos de formulário. É o caminho mais direto para evoluir o site atual sem mudar muito a rotina.</p>
+        <div class="tags">
+          <span class="tag">Mais familiar</span>
+          <span class="tag">Bom para desktop</span>
+          <span class="tag">Formulários longos</span>
+        </div>
+        <button class="select-layout" type="button" data-select-layout>
+          <i data-lucide="check-circle-2"></i>
+          Selecionar opção 1
+        </button>
+      </aside>
+
+      <div class="preview-frame layout-clean">
+        <div class="mock-top">
+          <div class="mock-logo">
+            <img src="suzano-logo.png" alt="">
+            <span>Controle de Pneus</span>
+          </div>
+          <div class="mock-actions">
+            <span class="mini-button">Voltar</span>
+            <span class="mini-button fill">Salvar</span>
+          </div>
+        </div>
+
+        <div class="mock-shell">
+          <aside class="side">
+            <div class="side-item active"><i data-lucide="clipboard-list"></i> Pneu</div>
+            <div class="side-item"><i data-lucide="calendar-days"></i> Meses</div>
+            <div class="side-item"><i data-lucide="camera"></i> Fotos</div>
+            <div class="side-item"><i data-lucide="settings"></i> Ajustes</div>
+          </aside>
+
+          <div class="content">
+            <div class="clean-head">
+              <div>
+                <h4>Formulário do pneu</h4>
+                <p>Pneu 24-1187, maio de 2026</p>
+              </div>
+              <span class="status-pill">Em edição</span>
+            </div>
+
+            <div class="stat-row">
+              <div class="stat"><span>DOT</span><strong>4322</strong></div>
+              <div class="stat"><span>Vida</span><strong>R2</strong></div>
+              <div class="stat"><span>Sulco</span><strong>8 mm</strong></div>
+              <div class="stat"><span>Fotos</span><strong>3/4</strong></div>
+            </div>
+
+            <div class="form-grid">
+              <div class="form-section span-6">
+                <h5>Planejamento</h5>
+                <div class="textarea-field">Inspeção visual, medição de sulco e registro fotográfico.</div>
+              </div>
+
+              <div class="form-section span-3">
+                <h5>Características</h5>
+                <span class="label">Marca</span>
+                <div class="select-field">Michelin</div>
+                <span class="label" style="margin-top:10px;">Medida</span>
+                <div class="select-field">295/80R22.5</div>
+              </div>
+
+              <div class="form-section span-3">
+                <h5>Informações</h5>
+                <span class="label">Avaria apresentada</span>
+                <div class="select-field">Desgaste irregular</div>
+                <span class="label" style="margin-top:10px;">Causa</span>
+                <div class="select-field">Desalinhamento entre eixo</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="option" id="opcao-2" data-layout-name="Opção 2: Painel compacto">
+      <aside class="option-meta">
+        <div class="option-kicker">Opção 02</div>
+        <h3>Painel compacto</h3>
+        <p>Mais denso e voltado para acompanhamento do mês. Deixa status, pneus e pendências visíveis antes de abrir o formulário completo.</p>
+        <div class="tags">
+          <span class="tag">Mais gerencial</span>
+          <span class="tag">Boa visão do mês</span>
+          <span class="tag">Rápido de comparar</span>
+        </div>
+        <button class="select-layout" type="button" data-select-layout>
+          <i data-lucide="check-circle-2"></i>
+          Selecionar opção 2
+        </button>
+      </aside>
+
+      <div class="preview-frame layout-board">
+        <div class="mock-top">
+          <div class="mock-logo">
+            <img src="suzano-logo.png" alt="">
+            <span>Maio 2026</span>
+          </div>
+          <div class="mock-actions">
+            <span class="mini-button">Exportar</span>
+            <span class="mini-button fill">Novo pneu</span>
+          </div>
+        </div>
+
+        <div class="mock-shell">
+          <div class="board-title">
+            <div>
+              <h4>Painel mensal</h4>
+              <p>Acompanhamento rápido da carteira de pneus avaliados.</p>
+            </div>
+            <span class="status-pill">82% concluído</span>
+          </div>
+
+          <div class="board-strip">
+            <div class="stat"><span>Pneus no mês</span><strong>48</strong></div>
+            <div class="stat"><span>Finalizados</span><strong>39</strong></div>
+            <div class="stat"><span>Pendentes</span><strong>09</strong></div>
+          </div>
+
+          <div class="board-main">
+            <div class="board-list">
+              <div class="list-row">
+                <div class="avatar">01</div>
+                <div><strong>Pneu 24-1187</strong><span>Michelin, R2, 295/80R22.5</span></div>
+                <span class="status-pill">Concluído</span>
+              </div>
+              <div class="list-row">
+                <div class="avatar">02</div>
+                <div><strong>Pneu 24-1188</strong><span>Goodyear, Novo, 385/65R22.5</span></div>
+                <span class="status-pill">Em edição</span>
+              </div>
+              <div class="list-row">
+                <div class="avatar">03</div>
+                <div><strong>Pneu 24-1190</strong><span>Continental, R1, 275/80R22.5</span></div>
+                <span class="status-pill">Fotos</span>
+              </div>
+              <div class="list-row">
+                <div class="avatar">04</div>
+                <div><strong>Pneu 24-1191</strong><span>Pirelli, R3, 10.00R20</span></div>
+                <span class="status-pill">Causa</span>
+              </div>
+            </div>
+
+            <aside class="board-side">
+              <h5>Atividade recente</h5>
+              <div class="timeline">
+                <div class="timeline-item">
+                  <div class="timeline-dot"></div>
+                  <div><strong>10:42</strong><br>Fotos anexadas ao pneu 24-1187.</div>
+                </div>
+                <div class="timeline-item">
+                  <div class="timeline-dot"></div>
+                  <div><strong>09:18</strong><br>Causa atualizada em pneu 24-1190.</div>
+                </div>
+                <div class="timeline-item">
+                  <div class="timeline-dot"></div>
+                  <div><strong>Ontem</strong><br>9 registros finalizados no mês.</div>
+                </div>
+              </div>
+            </aside>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="option" id="opcao-3" data-layout-name="Opção 3: Oficina escura">
+      <aside class="option-meta">
+        <div class="option-kicker">Opção 03</div>
+        <h3>Oficina escura</h3>
+        <p>Interface de alto contraste para inspeção técnica. Funciona bem quando o usuário está em ambiente de campo e precisa enxergar status com rapidez.</p>
+        <div class="tags">
+          <span class="tag">Alto contraste</span>
+          <span class="tag">Clima técnico</span>
+          <span class="tag">Fotos em destaque</span>
+        </div>
+        <button class="select-layout" type="button" data-select-layout>
+          <i data-lucide="check-circle-2"></i>
+          Selecionar opção 3
+        </button>
+      </aside>
+
+      <div class="preview-frame layout-dark">
+        <div class="mock-top">
+          <div class="mock-logo">
+            <img src="suzano-logo.png" alt="">
+            <span>Inspeção técnica</span>
+          </div>
+          <div class="mock-actions">
+            <span class="mini-button">Revisar</span>
+            <span class="mini-button fill">Finalizar</span>
+          </div>
+        </div>
+
+        <div class="mock-shell">
+          <aside class="dark-rail">
+            <h4>Pneu 24-1187</h4>
+            <p>Diagnóstico de carcaça, sulco e avarias.</p>
+
+            <div class="gauge">
+              <div>
+                <strong>8</strong>
+                <span>mm de profundidade</span>
+              </div>
+            </div>
+
+            <div class="dark-metric">
+              <i data-lucide="badge-check"></i>
+              <div><span>Vida</span><strong>R2</strong></div>
+            </div>
+            <div class="dark-metric">
+              <i data-lucide="scan-line"></i>
+              <div><span>DOT</span><strong>4322</strong></div>
+            </div>
+            <div class="dark-metric">
+              <i data-lucide="circle-alert"></i>
+              <div><span>Avaria</span><strong>Desgaste irregular</strong></div>
+            </div>
+          </aside>
+
+          <div class="dark-work">
+            <h4>Checklist de avaliação</h4>
+            <p>Informações essenciais sempre visíveis durante o preenchimento.</p>
+
+            <div class="dark-grid">
+              <div class="dark-panel">
+                <h5>Dados do pneu</h5>
+                <div class="check-row"><span>Marca e medida</span><i data-lucide="check"></i></div>
+                <div class="check-row"><span>DOT e número de fogo</span><i data-lucide="check"></i></div>
+                <div class="check-row"><span>Cliente e data</span><i data-lucide="check"></i></div>
+              </div>
+
+              <div class="dark-panel">
+                <h5>Diagnóstico</h5>
+                <div class="check-row"><span>Avaria apresentada</span><i data-lucide="check"></i></div>
+                <div class="check-row"><span>Causa provável</span><i data-lucide="clock-3"></i></div>
+                <div class="check-row"><span>Instruções finais</span><i data-lucide="clock-3"></i></div>
+              </div>
+
+              <div class="dark-panel wide">
+                <h5>Fotos anexadas</h5>
+                <div class="photo-grid">
+                  <div class="photo-tile"><i data-lucide="image"></i></div>
+                  <div class="photo-tile"><i data-lucide="image"></i></div>
+                  <div class="photo-tile"><i data-lucide="image"></i></div>
+                  <div class="photo-tile"><i data-lucide="plus"></i></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="option" id="opcao-4" data-layout-name="Opção 4: Mobile primeiro">
+      <aside class="option-meta">
+        <div class="option-kicker">Opção 04</div>
+        <h3>Mobile primeiro</h3>
+        <p>Foco em uso pelo celular, com etapas curtas e botões grandes. Ajuda quando a inspeção acontece longe do computador.</p>
+        <div class="tags">
+          <span class="tag">Melhor no celular</span>
+          <span class="tag">Etapas curtas</span>
+          <span class="tag">Ações grandes</span>
+        </div>
+        <button class="select-layout" type="button" data-select-layout>
+          <i data-lucide="check-circle-2"></i>
+          Selecionar opção 4
+        </button>
+      </aside>
+
+      <div class="preview-frame layout-mobile">
+        <div class="mock-top">
+          <div class="mock-logo">
+            <img src="suzano-logo.png" alt="">
+            <span>Modo campo</span>
+          </div>
+          <div class="mock-actions">
+            <span class="mini-button">Sincronizar</span>
+            <span class="mini-button fill">Salvar</span>
+          </div>
+        </div>
+
+        <div class="mock-shell">
+          <div class="phone" aria-label="Prévia mobile">
+            <div class="phone-top">
+              <div class="mock-logo">
+                <img src="suzano-logo.png" alt="">
+                <span>Controle de Pneus</span>
+              </div>
+              <h4>Pneu 24-1187</h4>
+              <p>Etapa 3 de 5, informações do pneu</p>
+            </div>
+            <div class="phone-body">
+              <div class="phone-card">
+                <strong>Características</strong>
+                <span>Michelin, 295/80R22.5, R2</span>
+              </div>
+              <div class="phone-card">
+                <strong>Avaria apresentada</strong>
+                <span>Desgaste irregular na banda de rodagem</span>
+              </div>
+              <div class="phone-card">
+                <strong>Fotos do pneu</strong>
+                <span>3 imagens anexadas</span>
+              </div>
+            </div>
+            <div class="bottom-nav">
+              <div><i data-lucide="home"></i></div>
+              <div class="active"><i data-lucide="clipboard-list"></i></div>
+              <div><i data-lucide="camera"></i></div>
+              <div><i data-lucide="check"></i></div>
+            </div>
+          </div>
+
+          <div class="mobile-detail">
+            <h4>Fluxo por etapas</h4>
+            <p>A tela separa o preenchimento em ações curtas para reduzir erro de digitação e deixar o envio de fotos mais prático.</p>
+            <div class="mobile-list">
+              <div class="mobile-action">
+                <i data-lucide="list-checks"></i>
+                <strong>Planejamento</strong>
+                <span>Como, quando e onde.</span>
+              </div>
+              <div class="mobile-action">
+                <i data-lucide="disc-3"></i>
+                <strong>Pneu</strong>
+                <span>Marca, vida e medida.</span>
+              </div>
+              <div class="mobile-action">
+                <i data-lucide="camera"></i>
+                <strong>Fotos</strong>
+                <span>Até quatro imagens.</span>
+              </div>
+              <div class="mobile-action">
+                <i data-lucide="send"></i>
+                <strong>Finalizar</strong>
+                <span>Revisão antes do envio.</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <p class="footer-note">
+      A seleção fica salva neste navegador apenas para facilitar a comparação. Depois que você escolher uma opção, eu posso aplicar o visual nas páginas reais do sistema.
+    </p>
+  </main>
+
+  <script>
+    const selectedText = document.getElementById("selectedText");
+    const options = Array.from(document.querySelectorAll(".option"));
+
+    function markSelected(option) {
+      options.forEach((item) => item.classList.toggle("selected", item === option));
+      const name = option.dataset.layoutName;
+      selectedText.textContent = name;
+      localStorage.setItem("layoutPreviewSelecionado", option.id);
+      option.querySelector("[data-select-layout]").setAttribute("aria-pressed", "true");
+      options
+        .filter((item) => item !== option)
+        .forEach((item) => item.querySelector("[data-select-layout]").setAttribute("aria-pressed", "false"));
+    }
+
+    document.querySelectorAll("[data-select-layout]").forEach((button) => {
+      button.setAttribute("aria-pressed", "false");
+      button.addEventListener("click", () => {
+        const option = button.closest(".option");
+        markSelected(option);
+      });
+    });
+
+    const savedId = localStorage.getItem("layoutPreviewSelecionado");
+    const savedOption = savedId ? document.getElementById(savedId) : null;
+    if (savedOption) {
+      markSelected(savedOption);
+    }
+
+    if (window.lucide) {
+      window.lucide.createIcons();
+    }
+  </script>
+</body>
+</html>

@@ -1,227 +1,347 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Formulário do Pneu</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+  <link rel="stylesheet" href="./css/opcao1.css?v=20260531-1">
 </head>
 
-<body class="bg-slate-100 min-h-screen">
-  <script type="module" src="./js/authGuard.js"></script>
+<body class="app-body">
+  <header class="app-topbar">
+    <div class="app-topbar-inner">
+      <div class="app-brand">
+        <div class="app-brand-mark">
+          <img src="suzano-logo.png" alt="Suzano">
+        </div>
+        <div>
+          <h1>Controle de Pneus</h1>
+          <p>Formulário técnico de avaliação</p>
+        </div>
+      </div>
 
-  <header class="bg-white shadow p-4 flex justify-between items-center">
-    <div>
-      <h1 id="tituloPneu" class="text-xl font-bold">Carregando...</h1>
-      <p id="subtituloPneu" class="text-sm text-slate-500">Aguarde</p>
-    </div>
- <!-- CENTRO (LOGO) -->
-  <div class="flex justify-center">
-    <img
-      src="suzano-logo.png"
-      class="h-6 md:h-10 object-contain"
-      alt="Logo"
-    >
-  </div>
-    <div class="flex gap-2 flex-wrap justify-end">
-      <button onclick="voltarMes()"
-        class="px-4 py-2 rounded bg-slate-200 hover:bg-slate-300">
-        Voltar
-      </button>
-
-      <button id="btnFinalizarPneu" onclick="finalizarPneu()"
-        class="px-4 py-2 rounded bg-green-600 hover:bg-green-700 text-white">
-        Finalizar pneu
-      </button>
-
-      <button id="btnSalvar" onclick="salvarFormulario()"
-        class="px-4 py-2 rounded bg-blue-600 hover:bg-blue-700 text-white">
-        Salvar
-      </button>
+      <div class="app-actions">
+        <button class="app-btn subtle" type="button" onclick="voltarMes()">
+          <i data-lucide="arrow-left"></i>
+          Voltar
+        </button>
+        <button id="btnFinalizarPneu" class="app-btn primary" type="button" onclick="finalizarPneu()">
+          <i data-lucide="check-circle-2"></i>
+          Finalizar pneu
+        </button>
+        <button id="btnSalvar" class="app-btn blue" type="button" onclick="salvarFormulario()">
+          <i data-lucide="save"></i>
+          Salvar
+        </button>
+      </div>
     </div>
   </header>
 
-  <main class="p-6 max-w-5xl mx-auto space-y-6">
+  <div class="app-layout">
+    <aside class="app-sidebar" aria-label="Seções do formulário">
+      <a class="side-link active" href="#planejamento">
+        <i data-lucide="clipboard-list"></i>
+        Planejamento
+      </a>
+      <a class="side-link" href="#quando">
+        <i data-lucide="calendar-clock"></i>
+        Quando
+      </a>
+      <a class="side-link" href="#onde">
+        <i data-lucide="map-pin"></i>
+        Onde
+      </a>
+      <a class="side-link" href="#caracteristicas">
+        <i data-lucide="disc-3"></i>
+        Características
+      </a>
+      <a class="side-link" href="#informacoes">
+        <i data-lucide="file-text"></i>
+        Informações
+      </a>
+      <a class="side-link" href="#fotos">
+        <i data-lucide="camera"></i>
+        Fotos
+      </a>
+    </aside>
 
-    <!-- PLANEJAMENTO -->
-    <div class="bg-white p-6 rounded-2xl shadow">
-      <h2 class="font-bold text-lg mb-2">Planejamento</h2>
-      <textarea id="f_como" class="w-full border p-3 rounded mb-3" placeholder="Como será realizado"></textarea>
-      <textarea id="f_instrucoes" class="w-full border p-3 rounded" placeholder="Instruções"></textarea>
-    </div>
+    <main class="app-main">
+      <section class="page-heading" aria-label="Resumo do pneu">
+        <div>
+          <p class="page-kicker">Formulário</p>
+          <h2 id="tituloPneu">Carregando...</h2>
+          <p id="subtituloPneu">Aguarde</p>
+        </div>
+      </section>
 
-    <!-- QUANDO -->
-    <div class="bg-white p-6 rounded-2xl shadow">
-      <h2 class="font-bold text-lg mb-2">Quando</h2>
-      <div class="grid md:grid-cols-2 gap-3">
-        <div>
-          <label class="text-sm text-slate-600">Data e hora inicial</label>
-          <input id="f_inicio" type="datetime-local" class="border p-3 rounded w-full">
-        </div>
-        <div>
-          <label class="text-sm text-slate-600">Data e hora final</label>
-          <input id="f_fim" type="datetime-local" class="border p-3 rounded w-full">
-        </div>
+      <div class="form-stack">
+        <section id="planejamento" class="form-card">
+          <h3>Planejamento</h3>
+          <div class="form-grid">
+            <div class="span-6">
+              <label for="f_como">Como será realizado</label>
+              <textarea id="f_como" placeholder="Como será realizado"></textarea>
+            </div>
+            <div class="span-6">
+              <label for="f_instrucoes">Instruções</label>
+              <textarea id="f_instrucoes" placeholder="Instruções"></textarea>
+            </div>
+          </div>
+        </section>
+
+        <section id="quando" class="form-card">
+          <h3>Quando</h3>
+          <div class="form-grid">
+            <div class="span-3">
+              <label for="f_inicio">Data e hora inicial</label>
+              <input id="f_inicio" type="datetime-local">
+            </div>
+            <div class="span-3">
+              <label for="f_fim">Data e hora final</label>
+              <input id="f_fim" type="datetime-local">
+            </div>
+          </div>
+        </section>
+
+        <section id="onde" class="form-card">
+          <h3>Onde</h3>
+          <div class="form-grid">
+            <div class="span-2">
+              <label for="f_nome">Nome</label>
+              <input id="f_nome" placeholder="Nome">
+            </div>
+            <div class="span-2">
+              <label for="f_razao">Razão social</label>
+              <input id="f_razao" placeholder="Razão social">
+            </div>
+            <div class="span-2">
+              <label for="f_endereco">Endereço</label>
+              <input id="f_endereco" placeholder="Endereço">
+            </div>
+          </div>
+        </section>
+
+        <section id="caracteristicas" class="form-card">
+          <h3>Características do pneu</h3>
+          <div class="form-grid">
+            <div class="span-2">
+              <label for="c_marca">Marca</label>
+              <select id="c_marca">
+                <option value="">Selecione</option>
+                <option>Goodyear</option>
+                <option>Continental</option>
+                <option>Pirelli</option>
+                <option>Michelin</option>
+                <option>Dunlop</option>
+                <option>XBRI</option>
+                <option>Dayton</option>
+                <option>Bridgestone</option>
+                <option>DRC</option>
+                <option>Fórmula</option>
+                <option>Marshal</option>
+                <option>BF Godrich</option>
+                <option>Importado</option>
+                <option>Outros</option>
+              </select>
+            </div>
+
+            <div class="span-2">
+              <label for="c_medida">Medida</label>
+              <select id="c_medida">
+                <option value="">Selecione</option>
+                <option>385/65R22.5</option>
+                <option>295/80R22.5</option>
+                <option>275/80R22.5</option>
+                <option>215/75R17.5</option>
+                <option>10.00-20</option>
+                <option>10.00R20</option>
+                <option>9.00-20</option>
+                <option>9.00R20</option>
+                <option>235/75R17.5</option>
+                <option>Outros</option>
+              </select>
+            </div>
+
+            <div class="span-2">
+              <label for="c_desenho">Desenho</label>
+              <select id="c_desenho">
+                <option value="">Selecione</option>
+                <option>Liso</option>
+                <option>Borrachudo</option>
+                <option>Misto</option>
+              </select>
+            </div>
+
+            <div class="span-2">
+              <label for="c_profundidade">Profundidade</label>
+              <select id="c_profundidade">
+                <option value="">Selecione</option>
+                <option>0 mm</option>
+                <option>1 mm</option>
+                <option>2 mm</option>
+                <option>3 mm</option>
+                <option>4 mm</option>
+                <option>5 mm</option>
+                <option>6 mm</option>
+                <option>7 mm</option>
+                <option>8 mm</option>
+                <option>9 mm</option>
+                <option>10 mm</option>
+                <option>11 mm</option>
+                <option>12 mm</option>
+                <option>13 mm</option>
+                <option>14 mm</option>
+                <option>15 mm</option>
+                <option>16 mm</option>
+                <option>17 mm</option>
+              </select>
+            </div>
+
+            <div class="span-2">
+              <label for="c_vida">Vida</label>
+              <select id="c_vida">
+                <option value="">Selecione</option>
+                <option>Novo</option>
+                <option>R1</option>
+                <option>R2</option>
+                <option>R3</option>
+                <option>R4</option>
+                <option>R5</option>
+                <option>Outro</option>
+              </select>
+            </div>
+          </div>
+        </section>
+
+        <section id="informacoes" class="form-card">
+          <h3>Informações do pneu</h3>
+          <div class="form-grid">
+            <div class="span-3">
+              <label for="i_dot">DOT</label>
+              <input id="i_dot" placeholder="DOT">
+            </div>
+
+            <div class="span-3">
+              <label for="i_fogo">Número de fogo</label>
+              <input id="i_fogo" placeholder="Número de fogo">
+            </div>
+
+            <div class="span-3">
+              <label for="i_cliente">Cliente</label>
+              <input id="i_cliente" placeholder="Cliente">
+            </div>
+
+            <div class="span-3">
+              <label for="i_data">Data</label>
+              <input id="i_data" type="date">
+            </div>
+
+            <div class="span-3">
+              <label for="i_mesRef">Mês de referência</label>
+              <select id="i_mesRef">
+                <option value="">Selecione</option>
+                <option>Janeiro</option>
+                <option>Fevereiro</option>
+                <option>Março</option>
+                <option>Abril</option>
+                <option>Maio</option>
+                <option>Junho</option>
+                <option>Julho</option>
+                <option>Agosto</option>
+                <option>Setembro</option>
+                <option>Outubro</option>
+                <option>Novembro</option>
+                <option>Dezembro</option>
+              </select>
+            </div>
+
+            <div class="span-3">
+              <label for="i_avaria">Avaria apresentada</label>
+              <select id="i_avaria">
+                <option value="">Selecione</option>
+                <option>Deslocamento de linner</option>
+                <option>Cortes no flanco</option>
+                <option>Deslocamento de ombro</option>
+                <option>Estouro de carcaça</option>
+                <option>Desagregamento de talão</option>
+                <option>Rachaduras próximas aos talões</option>
+                <option>Trinca no talão</option>
+                <option>Separação das lonas na banda de rodagem</option>
+                <option>Separação das lonas no ombro</option>
+                <option>Picotamento na banda de rodagem</option>
+                <option>Lonas expostas na banda de rodagem</option>
+                <option>Desgaste irregular na banda de rodagem</option>
+                <option>Deteriorações diversas</option>
+                <option>DOT Vencido</option>
+                <option>Deslocamento no flanco</option>
+                <option>Outro</option>
+              </select>
+            </div>
+
+            <div class="span-6">
+              <label for="i_causa">Causa</label>
+              <select id="i_causa">
+                <option>Selecione a causa</option>
+                <option>Sem possibilidade de diagnóstico preciso devido à condição da carcaça</option>
+                <option>Travamento de roda por falha mecânica ou operacional</option>
+                <option>Falha no processo de recapagem ou conserto</option>
+                <option>Sobrecarga</option>
+                <option>Uso excessivo dos freios convencionais e pouca utilização de freio a motor</option>
+                <option>Aquecimento súbito do sistema de freios, geralmente causado em serras e descidas excessivamente longas</option>
+                <option>Pressão de enchimento insuficiente</option>
+                <option>Aros irregulares ou danificados</option>
+                <option>Superaquecimento do sistema de freios</option>
+                <option>Pressão de enchimento excessiva</option>
+                <option>Pista mal asfaltada, entrada de pontes quando existem desníveis</option>
+                <option>Velocidade incompatível ao percurso</option>
+                <option>Terrenos acidentados ou com excesso de pedras cortantes</option>
+                <option>Avarias por objetos cortantes e perfurantes</option>
+                <option>Emparelhamento inadequado, pneus geminados</option>
+                <option>Falta de controle de pressão</option>
+                <option>Uso de pneu inadequado para operação</option>
+                <option>Infiltração de umidade e poeira devido a perfurações na banda de rodagem</option>
+                <option>Falta de rodízio nos pneus</option>
+                <option>Carga mal distribuída</option>
+                <option>Desalinhamento entre eixo</option>
+                <option>Anomalias mecânicas, suspensão</option>
+                <option>Talão baquelizado devido à utilização com superaquecimento</option>
+                <option>Rodar vazio após furo, sucateando o revestimento interno</option>
+                <option>Impacto contra buracos</option>
+                <option>Roçamento contra meio-fio etc.</option>
+                <option>Outro</option>
+              </select>
+            </div>
+          </div>
+        </section>
+
+        <section id="fotos" class="form-card">
+          <h3>Fotos do pneu</h3>
+          <div class="form-grid">
+            <div class="span-6">
+              <label for="f_fotos">Selecione no máximo 4 imagens</label>
+              <input id="f_fotos" type="file" accept="image/*" multiple>
+            </div>
+          </div>
+          <div id="previewFotos" class="photo-grid"></div>
+        </section>
       </div>
-    </div>
+    </main>
+  </div>
 
-    <!-- ONDE -->
-    <div class="bg-white p-6 rounded-2xl shadow">
-      <h2 class="font-bold text-lg mb-2">Onde</h2>
-      <input id="f_nome" class="w-full border p-3 rounded mb-3" placeholder="Nome">
-      <input id="f_razao" class="w-full border p-3 rounded mb-3" placeholder="Razão social">
-      <input id="f_endereco" class="w-full border p-3 rounded" placeholder="Endereço">
-    </div>
+  <div id="modalImagem" class="image-modal hidden">
+    <button class="close-btn" type="button" onclick="fecharImagem()" aria-label="Fechar imagem">
+      <i data-lucide="x"></i>
+    </button>
+    <img id="imagemExpandida" alt="Imagem do pneu ampliada">
+  </div>
 
-    <!-- ✅ CARACTERÍSTICAS DO PNEU (FALTAVA) -->
-    <div class="bg-white p-6 rounded-2xl shadow">
-      <h2 class="font-bold text-lg mb-4">Características do pneu</h2>
-
-      <div class="grid md:grid-cols-3 gap-3">
-        <div>
-          <label class="text-sm text-slate-600">Marca</label>
-          <select id="c_marca" class="border p-3 rounded w-full">
-            <option value="">Selecione</option>
-            <option>Goodyear</option>
-            <option>Continental</option>
-            <option>Pirelli</option>
-            <option>Michelin</option>
-            <option>Dunlop</option>
-            <option>Outros</option>
-          </select>
-        </div>
-
-        <div>
-          <label class="text-sm text-slate-600">Medida</label>
-          <select id="c_medida" class="border p-3 rounded w-full">
-            <option value="">Selecione</option>
-            <option>395/65R22.5</option>
-            <option>295/80R</option>
-            <option>275/80R</option>
-            <option>Outros</option>
-          </select>
-        </div>
-
-        <div>
-          <label class="text-sm text-slate-600">Desenho</label>
-          <select id="c_desenho" class="border p-3 rounded w-full">
-            <option value="">Selecione</option>
-            <option>Liso</option>
-            <option>Borrachudo</option>
-            <option>Misto</option>
-          </select>
-        </div>
-
-        <div>
-          <label class="text-sm text-slate-600">Profundidade</label>
-          <select id="c_profundidade" class="border p-3 rounded w-full">
-            <option value="">Selecione</option>
-            <option>0 mm</option><option>2 mm</option><option>4 mm</option><option>6 mm</option>
-            <option>8 mm</option><option>10 mm</option><option>12 mm</option><option>14 mm</option>
-            <option>16 mm</option>
-          </select>
-        </div>
-
-        <div>
-          <label class="text-sm text-slate-600">Vida</label>
-          <select id="c_vida" class="border p-3 rounded w-full">
-            <option value="">Selecione</option>
-            <option>Novo</option>
-            <option>R1</option>
-            <option>R2</option>
-            <option>R3</option>
-            <option>R4</option>
-            <option>R5</option>
-            <option>Outro</option>
-          </select>
-        </div>
-      </div>
-    </div>
-
-    <!-- INFORMAÇÕES DO PNEU -->
-    <div class="bg-white p-6 rounded-2xl shadow">
-      <h2 class="font-bold text-lg mb-4">Informações do pneu</h2>
-
-      <div class="grid md:grid-cols-2 gap-3">
-        <div>
-          <label class="text-sm text-slate-600">DOT</label>
-          <input id="i_dot" class="border p-3 rounded w-full" placeholder="DOT">
-        </div>
-
-        <div>
-          <label class="text-sm text-slate-600">Número de fogo</label>
-          <input id="i_fogo" class="border p-3 rounded w-full" placeholder="Nº de fogo">
-        </div>
-
-        <div>
-          <label class="text-sm text-slate-600">Cliente</label>
-          <input id="i_cliente" class="border p-3 rounded w-full" placeholder="Cliente">
-        </div>
-
-        <div>
-          <label class="text-sm text-slate-600">Data</label>
-          <input id="i_data" type="date" class="border p-3 rounded w-full">
-        </div>
-
-        <div>
-          <label class="text-sm text-slate-600">Mês de referência</label>
-          <select id="i_mesRef" class="border p-3 rounded w-full">
-            <option value="">Selecione</option>
-            <option>Janeiro</option><option>Fevereiro</option><option>Março</option><option>Abril</option>
-            <option>Maio</option><option>Junho</option><option>Julho</option><option>Agosto</option>
-            <option>Setembro</option><option>Outubro</option><option>Novembro</option><option>Dezembro</option>
-          </select>
-        </div>
-
-        <div>
-          <label class="text-sm text-slate-600">Avaria apresentada</label>
-          <select id="i_avaria" class="border p-3 rounded w-full">
-            <option value="">Selecione</option>
-            <option>Deslocamento de linner</option>
-            <option>Cortes no flanco</option>
-            <option>Deslocamento de ombro</option>
-            <option>Estouro de carcaça</option>
-            <option>Desagregamento de talão</option>
-          </select>
-        </div>
-
-        <div class="md:col-span-2">
-          <label class="text-sm text-slate-600">Causa</label>
-          <select id="i_causa" class="border p-3 rounded w-full">
-            <option value="">Selecione</option>
-            <option>Defeito da pista</option>
-            <option>Falta de rodízio de pneu</option>
-            <option>Velocidade incompatível com o percurso</option>
-            <option>Avaria por objetos cortantes ou perfurantes</option>
-          </select>
-        </div>
-      </div>
-    </div>
-
-    <!-- FOTOS -->
-    <div class="bg-white p-6 rounded-2xl shadow">
-      <h2 class="font-bold text-lg mb-2">Fotos do pneu (até 4)</h2>
-      <input id="f_fotos" type="file" accept="image/*" multiple class="border p-3 rounded w-full">
-      <p class="text-sm text-slate-500 mt-2">Selecione no máximo 4 imagens.</p>
-      <div id="previewFotos" class="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4"></div>
-    </div>
-
-  </main>
-
-<!-- MODAL VISUALIZAR IMAGEM -->
-<div id="modalImagem"
-  class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-50">
-
-  <button onclick="fecharImagem()"
-    class="absolute top-4 right-4 text-white text-3xl font-bold">
-    ✕
-  </button>
-
-  <img id="imagemExpandida"
-    class="max-w-full max-h-full rounded-xl shadow-lg" />
-</div>
-
-  <script type="module" src="./js/firebase.js"></script>
-  <script type="module" src="./js/pneuForm.js"></script>
+  <script type="module" src="./js/pneuForm.js?v=20260531-5"></script>
+  <script>
+    window.addEventListener("DOMContentLoaded", () => {
+      if (window.lucide) window.lucide.createIcons();
+    });
+  </script>
 </body>
 </html>

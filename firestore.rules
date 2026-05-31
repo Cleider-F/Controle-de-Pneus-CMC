@@ -1,0 +1,59 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function validStatus(status) {
+      return status in ["em_andamento", "finalizado"];
+    }
+
+    function monthDoc(mesId) {
+      return /databases/$(database)/documents/meses/$(mesId);
+    }
+
+    function monthIsOpen(mesId) {
+      return exists(monthDoc(mesId))
+        && get(monthDoc(mesId)).data.status != "finalizado";
+    }
+
+    match /usuarios/{userId} {
+      allow read: if signedIn() && request.auth.uid == userId;
+      allow create, update: if signedIn() && request.auth.uid == userId;
+      allow delete: if false;
+    }
+
+    match /config/contadorPneus {
+      allow read, write: if signedIn();
+    }
+
+    match /meses/{mesId} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && request.resource.data.status == "em_andamento";
+      allow update: if signedIn()
+        && resource.data.status != "finalizado"
+        && validStatus(request.resource.data.status);
+      allow delete: if signedIn();
+
+      match /pneus/{pneuId} {
+        allow read: if signedIn();
+        allow create: if signedIn()
+          && monthIsOpen(mesId)
+          && request.resource.data.status == "em_andamento";
+        allow update: if signedIn()
+          && monthIsOpen(mesId)
+          && resource.data.status != "finalizado"
+          && validStatus(request.resource.data.status);
+        allow delete: if signedIn()
+          && monthIsOpen(mesId);
+      }
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
