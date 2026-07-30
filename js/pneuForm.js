@@ -36,7 +36,7 @@ function pneuDocRef(mesId, pneuId) {
 }
 
 const MAX_FOTOS = 4;
-const MAX_FOTO_MB = 8;
+const MAX_FOTO_MB = 20;
 const OUTRO_SELECT_IDS = ["c_marca", "c_medida", "c_vida"];
 
 function dadosOnde(pneu) {
